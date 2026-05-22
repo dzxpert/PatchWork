@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+  <metadata>
+    <id>PatchWork</id>
+    <version>1.5.2</version>
+    <title>PatchWork</title>
+    <authors>Meshmash</authors>
+    <readme>build\README.md</readme>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">AGPL-3.0-or-later</license>
+    <projectUrl>https://github.com/Meshmash/PatchWork/</projectUrl>
+    <repository type="git" url="https://github.com/Meshmash/PatchWork.git"/>
+    <!--<iconUrl>http://icon_url_here_or_delete_this_line/</iconUrl>-->
+    <description>PatchWork: a runtime memory patching and code hooking library with a Lua scripting API and an injectable x64 ImGui overlay.</description>
+    <!--<releaseNotes>Summary of changes made in this release of the package.</releaseNotes>-->
+    <copyright>Copyright 2024</copyright>
+    <tags>Native Lua Hook Detour Patching Overlay</tags>
+    <dependencies>
+      <dependency id="lua" version="5.4.4.1" include="native" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="Debug\RPS.dll" target="build\native\bin\Win32\v143\Debug"/>
+    <file src="Debug\RPS.lib" target="build\native\lib\Win32\v143\Debug"/>
+    <file src="Debug\RPS.pdb" target="build\native\lib\Win32\v143\Debug"/>
+    <file src="Release\RPS.dll" target="build\native\bin\Win32\v143\Release"/>
+    <file src="Release\RPS.lib" target="build\native\lib\Win32\v143\Release"/>
+    <file src="PatchWork.h" target="build\native\include"/>
+    <file src="RPS.targets" target="build\native"/>
+    <file src="RPS-propertiesui.xml" target="build\native"/>
+    <file src="README.md" target="build"/>
+    <file src="README.md" target="build\native\doc"/>
+  </files>
+</package>

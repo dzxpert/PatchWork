@@ -1,0 +1,75 @@
+<Project>
+  <PropertyGroup>
+	  <PackageId>PatchWork</PackageId>
+	  <Version>1.5.1</Version>
+	  <Authors>Meshmash</Authors>
+	  <Company>Meshmash</Company>
+    <Copyright>2024</Copyright>
+    <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
+	  <TargetFramework>native</TargetFramework>
+	  <PackageOutputPath>.</PackageOutputPath>
+	  <Description>PatchWork: a runtime memory patching and code hooking library with a Lua scripting API and an injectable x64 ImGui overlay.</Description>
+    <RepositoryUrl>https://github.com/Meshmash/PatchWork.git</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/Meshmash/PatchWork/</PackageProjectUrl>
+
+    <EnableCentralPackageVersions>true</EnableCentralPackageVersions>
+    <TargetFramework>native</TargetFramework>
+	  <RestoreAdditionalProjectSources>
+		  <!-- for lua -->
+        https://api.nuget.org/v3/index.json; 			
+      </RestoreAdditionalProjectSources>
+	  <_NuGetTargetFallbackMoniker>$(_NuGetTargetFallbackMoniker);native,Version=v0.0</_NuGetTargetFallbackMoniker>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="lua" Version="5.4.6"/>
+	  <PackageReference Include="NuGet.Build.Tasks.Pack" Version="5.2.0"/>
+
+
+
+    <Content Include="Debug\RPS.dll">
+      <Pack>true</Pack>
+      <PackagePath>build\native\bin\Win32\v143\Debug</PackagePath>
+    </Content>
+    <Content Include="Debug\RPS.lib">
+      <Pack>true</Pack>
+      <PackagePath>build\native\lib\Win32\v143\Debug</PackagePath>
+    </Content>
+    <Content Include="Debug\RPS.pdb">
+      <Pack>true</Pack>
+      <PackagePath>build\native\lib\Win32\v143\Debug</PackagePath>
+    </Content>
+
+    <Content Include="Release\RPS.dll">
+      <Pack>true</Pack>
+      <PackagePath>build\native\bin\Win32\v143\Release</PackagePath>
+    </Content>
+    <Content Include="Release\RPS.lib">
+      <Pack>true</Pack>
+      <PackagePath>build\native\lib\Win32\v143\Release</PackagePath>
+    </Content>
+
+    <Content Include="PatchWork.h">
+      <Pack>true</Pack>
+      <PackagePath>build\native\include</PackagePath>
+    </Content>
+
+    <Content Include="RPS.targets">
+      <Pack>true</Pack>
+      <PackagePath>build\native</PackagePath>
+    </Content>
+    <Content Include="RPS-propertiesui.xml">
+      <Pack>true</Pack>
+      <PackagePath>build\native</PackagePath>
+    </Content>
+
+    <Content Include="README.md">
+      <Pack>true</Pack>
+      <PackagePath>build</PackagePath>
+    </Content>
+    <Content Include="README.md">
+      <Pack>true</Pack>
+      <PackagePath>build\native\doc</PackagePath>
+    </Content>
+  </ItemGroup>
+</Project>
