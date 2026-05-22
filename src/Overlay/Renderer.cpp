@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "DX11Hook.h"
 #include "UI.h"
+#include "JetBrainsMonoFont.h"
 
 #include <imgui.h>
 #include <imgui_impl_dx11.h>
@@ -21,93 +22,111 @@ void ApplyPatchWorkTheme()
 {
     ImGuiStyle& style = ImGui::GetStyle();
 
-    // Rounding
-    style.WindowRounding = 6.0f;
-    style.ChildRounding = 4.0f;
-    style.FrameRounding = 4.0f;
-    style.PopupRounding = 4.0f;
-    style.ScrollbarRounding = 4.0f;
-    style.GrabRounding = 3.0f;
-    style.TabRounding = 4.0f;
+    // Rounding — slightly more generous for a softer, modern feel
+    style.WindowRounding = 8.0f;
+    style.ChildRounding = 5.0f;
+    style.FrameRounding = 5.0f;
+    style.PopupRounding = 6.0f;
+    style.ScrollbarRounding = 5.0f;
+    style.GrabRounding = 4.0f;
+    style.TabRounding = 5.0f;
 
-    // Spacing
-    style.FramePadding = ImVec2(8.0f, 4.0f);
-    style.ItemSpacing = ImVec2(8.0f, 4.0f);
-    style.ItemInnerSpacing = ImVec2(4.0f, 4.0f);
-    style.WindowPadding = ImVec2(10.0f, 10.0f);
-    style.ScrollbarSize = 12.0f;
+    // Spacing — more generous for breathing room
+    style.FramePadding = ImVec2(10.0f, 5.0f);
+    style.ItemSpacing = ImVec2(8.0f, 5.0f);
+    style.ItemInnerSpacing = ImVec2(5.0f, 5.0f);
+    style.WindowPadding = ImVec2(12.0f, 12.0f);
+    style.ScrollbarSize = 10.0f;
     style.GrabMinSize = 8.0f;
+    style.IndentSpacing = 20.0f;
 
-    // Border
-    style.WindowBorderSize = 1.0f;
+    // Border — subtle cyan-tinted glow border
+    style.WindowBorderSize = 1.5f;
     style.ChildBorderSize = 1.0f;
     style.FrameBorderSize = 0.0f;
     style.TabBorderSize = 0.0f;
+    style.PopupBorderSize = 1.0f;
+    style.SeparatorTextBorderSize = 1.0f;
+
+    // Anti-aliased lines
+    style.AntiAliasedLines = true;
+    style.AntiAliasedFill = true;
 
     ImVec4* colors = style.Colors;
 
-    // Background: #0D1117
-    // Surface:    #161B22
-    // Border:     #30363D
-    // Text:       #E6EDF3
-    // Accent:     #00D4FF (cyan)
-    // Success:    #39FF14 (green)
-    // Error:      #FF4444 (red)
-    // Warning:    #FFD700 (gold)
+    // ── Base palette ────────────────────────────────
+    // Background: #0D1117     Surface: #161B22
+    // Border:     #30363D     Text:    #E6EDF3
+    // Accent:     #00D4FF     Success: #39FF14
+    // Error:      #FF4444     Warning: #FFD700
 
-    colors[ImGuiCol_WindowBg]           = ImVec4(0.051f, 0.067f, 0.090f, 0.95f);   // #0D1117
-    colors[ImGuiCol_ChildBg]            = ImVec4(0.086f, 0.106f, 0.133f, 1.0f);    // #161B22
-    colors[ImGuiCol_PopupBg]            = ImVec4(0.086f, 0.106f, 0.133f, 0.98f);
-    colors[ImGuiCol_Border]             = ImVec4(0.188f, 0.212f, 0.239f, 0.6f);    // #30363D
+    // Window
+    colors[ImGuiCol_WindowBg]           = ImVec4(0.051f, 0.067f, 0.090f, 0.96f);   // #0D1117
+    colors[ImGuiCol_ChildBg]            = ImVec4(0.075f, 0.092f, 0.118f, 1.0f);    // slightly lighter
+    colors[ImGuiCol_PopupBg]            = ImVec4(0.075f, 0.092f, 0.118f, 0.98f);
+    colors[ImGuiCol_Border]             = ImVec4(0.0f, 0.50f, 0.65f, 0.25f);       // cyan-tinted border
     colors[ImGuiCol_BorderShadow]       = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 
+    // Text
     colors[ImGuiCol_Text]               = ImVec4(0.902f, 0.929f, 0.953f, 1.0f);    // #E6EDF3
-    colors[ImGuiCol_TextDisabled]       = ImVec4(0.5f, 0.5f, 0.5f, 1.0f);
+    colors[ImGuiCol_TextDisabled]       = ImVec4(0.40f, 0.43f, 0.47f, 1.0f);
 
-    colors[ImGuiCol_FrameBg]            = ImVec4(0.110f, 0.133f, 0.165f, 1.0f);
-    colors[ImGuiCol_FrameBgHovered]     = ImVec4(0.140f, 0.170f, 0.200f, 1.0f);
-    colors[ImGuiCol_FrameBgActive]      = ImVec4(0.170f, 0.200f, 0.240f, 1.0f);
+    // Frame backgrounds — slightly more contrast
+    colors[ImGuiCol_FrameBg]            = ImVec4(0.08f, 0.10f, 0.13f, 1.0f);
+    colors[ImGuiCol_FrameBgHovered]     = ImVec4(0.11f, 0.14f, 0.18f, 1.0f);
+    colors[ImGuiCol_FrameBgActive]      = ImVec4(0.14f, 0.18f, 0.22f, 1.0f);
 
-    colors[ImGuiCol_TitleBg]            = ImVec4(0.051f, 0.067f, 0.090f, 1.0f);
-    colors[ImGuiCol_TitleBgActive]      = ImVec4(0.086f, 0.106f, 0.133f, 1.0f);
-    colors[ImGuiCol_TitleBgCollapsed]   = ImVec4(0.051f, 0.067f, 0.090f, 0.5f);
+    // Title bar — dark with subtle cyan on active
+    colors[ImGuiCol_TitleBg]            = ImVec4(0.040f, 0.050f, 0.070f, 1.0f);
+    colors[ImGuiCol_TitleBgActive]      = ImVec4(0.050f, 0.070f, 0.095f, 1.0f);
+    colors[ImGuiCol_TitleBgCollapsed]   = ImVec4(0.040f, 0.050f, 0.070f, 0.5f);
 
-    colors[ImGuiCol_MenuBarBg]          = ImVec4(0.086f, 0.106f, 0.133f, 1.0f);
+    colors[ImGuiCol_MenuBarBg]          = ImVec4(0.065f, 0.082f, 0.105f, 1.0f);
 
-    colors[ImGuiCol_ScrollbarBg]        = ImVec4(0.051f, 0.067f, 0.090f, 0.5f);
-    colors[ImGuiCol_ScrollbarGrab]      = ImVec4(0.188f, 0.212f, 0.239f, 1.0f);
-    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.250f, 0.280f, 0.310f, 1.0f);
-    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.300f, 0.330f, 0.360f, 1.0f);
+    // Scrollbar — thin and translucent
+    colors[ImGuiCol_ScrollbarBg]        = ImVec4(0.040f, 0.050f, 0.070f, 0.4f);
+    colors[ImGuiCol_ScrollbarGrab]      = ImVec4(0.15f, 0.18f, 0.22f, 0.8f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.0f, 0.60f, 0.80f, 0.5f);
+    colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.0f, 0.75f, 0.95f, 0.7f);
 
-    // Accent colors (cyan)
+    // Accent colors (cyan) — brighter hover states
     colors[ImGuiCol_CheckMark]          = ImVec4(0.0f, 0.831f, 1.0f, 1.0f);        // #00D4FF
-    colors[ImGuiCol_SliderGrab]         = ImVec4(0.0f, 0.831f, 1.0f, 0.8f);
+    colors[ImGuiCol_SliderGrab]         = ImVec4(0.0f, 0.831f, 1.0f, 0.75f);
     colors[ImGuiCol_SliderGrabActive]   = ImVec4(0.0f, 0.900f, 1.0f, 1.0f);
 
-    colors[ImGuiCol_Button]             = ImVec4(0.0f, 0.831f, 1.0f, 0.15f);
-    colors[ImGuiCol_ButtonHovered]      = ImVec4(0.0f, 0.831f, 1.0f, 0.30f);
-    colors[ImGuiCol_ButtonActive]       = ImVec4(0.0f, 0.831f, 1.0f, 0.50f);
+    // Buttons — subtle cyan glow
+    colors[ImGuiCol_Button]             = ImVec4(0.0f, 0.831f, 1.0f, 0.12f);
+    colors[ImGuiCol_ButtonHovered]      = ImVec4(0.0f, 0.831f, 1.0f, 0.28f);
+    colors[ImGuiCol_ButtonActive]       = ImVec4(0.0f, 0.831f, 1.0f, 0.45f);
 
-    colors[ImGuiCol_Header]             = ImVec4(0.0f, 0.831f, 1.0f, 0.15f);
-    colors[ImGuiCol_HeaderHovered]      = ImVec4(0.0f, 0.831f, 1.0f, 0.30f);
-    colors[ImGuiCol_HeaderActive]       = ImVec4(0.0f, 0.831f, 1.0f, 0.40f);
+    // Headers
+    colors[ImGuiCol_Header]             = ImVec4(0.0f, 0.831f, 1.0f, 0.12f);
+    colors[ImGuiCol_HeaderHovered]      = ImVec4(0.0f, 0.831f, 1.0f, 0.25f);
+    colors[ImGuiCol_HeaderActive]       = ImVec4(0.0f, 0.831f, 1.0f, 0.38f);
 
-    colors[ImGuiCol_Separator]          = ImVec4(0.188f, 0.212f, 0.239f, 0.6f);
+    // Separator — cyan-tinted
+    colors[ImGuiCol_Separator]          = ImVec4(0.0f, 0.40f, 0.55f, 0.25f);
     colors[ImGuiCol_SeparatorHovered]   = ImVec4(0.0f, 0.831f, 1.0f, 0.5f);
     colors[ImGuiCol_SeparatorActive]    = ImVec4(0.0f, 0.831f, 1.0f, 1.0f);
 
-    colors[ImGuiCol_Tab]                = ImVec4(0.086f, 0.106f, 0.133f, 1.0f);
-    colors[ImGuiCol_TabHovered]         = ImVec4(0.0f, 0.831f, 1.0f, 0.30f);
-    colors[ImGuiCol_TabActive]          = ImVec4(0.0f, 0.831f, 1.0f, 0.20f);
-    colors[ImGuiCol_TabUnfocused]       = ImVec4(0.051f, 0.067f, 0.090f, 1.0f);
-    colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.086f, 0.106f, 0.133f, 1.0f);
+    // Tabs — brighter active state
+    colors[ImGuiCol_Tab]                = ImVec4(0.065f, 0.082f, 0.105f, 1.0f);
+    colors[ImGuiCol_TabHovered]         = ImVec4(0.0f, 0.831f, 1.0f, 0.28f);
+    colors[ImGuiCol_TabActive]          = ImVec4(0.0f, 0.55f, 0.75f, 0.30f);
+    colors[ImGuiCol_TabUnfocused]       = ImVec4(0.040f, 0.050f, 0.070f, 1.0f);
+    colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.065f, 0.082f, 0.105f, 1.0f);
 
-    colors[ImGuiCol_ResizeGrip]         = ImVec4(0.0f, 0.831f, 1.0f, 0.10f);
-    colors[ImGuiCol_ResizeGripHovered]  = ImVec4(0.0f, 0.831f, 1.0f, 0.40f);
-    colors[ImGuiCol_ResizeGripActive]   = ImVec4(0.0f, 0.831f, 1.0f, 0.70f);
+    // Resize grip
+    colors[ImGuiCol_ResizeGrip]         = ImVec4(0.0f, 0.831f, 1.0f, 0.08f);
+    colors[ImGuiCol_ResizeGripHovered]  = ImVec4(0.0f, 0.831f, 1.0f, 0.35f);
+    colors[ImGuiCol_ResizeGripActive]   = ImVec4(0.0f, 0.831f, 1.0f, 0.65f);
 
-    colors[ImGuiCol_TextSelectedBg]     = ImVec4(0.0f, 0.831f, 1.0f, 0.25f);
+    // Selection and navigation
+    colors[ImGuiCol_TextSelectedBg]     = ImVec4(0.0f, 0.831f, 1.0f, 0.22f);
     colors[ImGuiCol_NavHighlight]       = ImVec4(0.0f, 0.831f, 1.0f, 0.80f);
+
+    // Modal dim background
+    colors[ImGuiCol_ModalWindowDimBg]   = ImVec4(0.0f, 0.0f, 0.0f, 0.55f);
 }
 
 // Input polling via GetAsyncKeyState (no WndProc hooking)
@@ -183,39 +202,47 @@ static void PollInput(HWND hWnd)
     update_key(ImGuiKey_PageUp, VK_PRIOR);
     update_key(ImGuiKey_PageDown, VK_NEXT);
 
-    // Alphanumeric keys (0-9)
+    // --- Layout-aware character input via ToUnicodeEx ---
+    // Works correctly with AZERTY, QWERTZ, and all other keyboard layouts.
+    // Instead of hardcoding which character each VK produces, we ask Windows
+    // to translate the key press using the active keyboard layout.
+    BYTE keyboardState[256];
+    GetKeyboardState(keyboardState);
+    HKL layout = GetKeyboardLayout(0);
+
+    // Update ImGuiKey events for alphanumeric keys (needed for shortcuts)
     for (int i = 0x30; i <= 0x39; ++i)
-    {
-        if (GetAsyncKeyState(i) & 1)
-            io.AddInputCharacter((unsigned int)i);
         update_key((ImGuiKey)(ImGuiKey_0 + (i - 0x30)), i);
-    }
-
-    // Alphanumeric keys (A-Z)
     for (int i = 0x41; i <= 0x5A; ++i)
-    {
-        if (GetAsyncKeyState(i) & 1)
-            io.AddInputCharacter(shift ? (unsigned int)i : (unsigned int)(i + 32));
         update_key((ImGuiKey)(ImGuiKey_A + (i - 0x41)), i);
-    }
 
-    // Common symbols
-    auto update_symbol = [&](int vkey, char plain, char shifted) {
-        if (GetAsyncKeyState(vkey) & 1)
-            io.AddInputCharacter(shift ? (unsigned int)shifted : (unsigned int)plain);
+    // All virtual keys that can produce printable characters
+    static const int charVKeys[] = {
+        // 0-9
+        0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
+        // A-Z
+        0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A,
+        0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53, 0x54,
+        0x55, 0x56, 0x57, 0x58, 0x59, 0x5A,
+        // OEM keys (symbols, punctuation)
+        VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_5, VK_OEM_6, VK_OEM_7, VK_OEM_8,
+        VK_OEM_COMMA, VK_OEM_PERIOD, VK_OEM_MINUS, VK_OEM_PLUS, VK_OEM_102,
     };
 
-    update_symbol(VK_OEM_COMMA, ',', '<');
-    update_symbol(VK_OEM_PERIOD, '.', '>');
-    update_symbol(VK_OEM_MINUS, '-', '_');
-    update_symbol(VK_OEM_PLUS, '=', '+');
-    update_symbol(VK_OEM_1, ';', ':');
-    update_symbol(VK_OEM_2, '/', '?');
-    update_symbol(VK_OEM_3, '`', '~');
-    update_symbol(VK_OEM_4, '[', '{');
-    update_symbol(VK_OEM_5, '\\', '|');
-    update_symbol(VK_OEM_6, ']', '}');
-    update_symbol(VK_OEM_7, '\'', '"');
+    for (int vk : charVKeys)
+    {
+        if (!(GetAsyncKeyState(vk) & 1))
+            continue;
+
+        UINT scanCode = MapVirtualKeyEx(vk, MAPVK_VK_TO_VSC, layout);
+        wchar_t buf[4] = {};
+        int result = ToUnicodeEx(vk, scanCode, keyboardState, buf, 4, 0, layout);
+        if (result > 0)
+        {
+            for (int c = 0; c < result; c++)
+                io.AddInputCharacterUTF16(buf[c]);
+        }
+    }
 }
 
 // ============ hkPresent ============
@@ -246,13 +273,25 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
             io.IniFilename = nullptr;
 
             ImGui_ImplWin32_Init(g_hwnd);
+            ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-            // Load default font (ImGui built-in, monospace-ish)
-            // Could embed Inter Medium here in the future
-            io.Fonts->AddFontDefault();
+            // Load JetBrains Mono font (embedded in binary)
+            // Must be done after backend init so the font texture gets created properly
+            ImFontConfig fontConfig;
+            fontConfig.FontDataOwnedByAtlas = false; // data is static, don't let ImGui free it
+            fontConfig.OversampleH = 2;
+            fontConfig.OversampleV = 1;
+            fontConfig.PixelSnapH = true;
+            io.Fonts->AddFontFromMemoryTTF(
+                (void*)JetBrainsMono_ttf_data,
+                JetBrainsMono_ttf_size,
+                15.0f,
+                &fontConfig);
             io.Fonts->Build();
 
-            ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+            // Force the DX11 backend to recreate the font texture from the new atlas
+            ImGui_ImplDX11_InvalidateDeviceObjects();
+            ImGui_ImplDX11_CreateDeviceObjects();
 
             ApplyPatchWorkTheme();
 

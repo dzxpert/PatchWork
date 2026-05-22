@@ -123,6 +123,7 @@
     <ClInclude Include="src\Overlay\Console.h" />
     <ClInclude Include="src\Overlay\ScriptTab.h" />
     <ClInclude Include="src\Overlay\FileManager.h" />
+    <ClInclude Include="src\Overlay\JetBrainsMonoFont.h" />
   </ItemGroup>
   <!-- Source files -->
   <ItemGroup>

@@ -75,8 +75,6 @@ namespace LuaEngine
             return result;
         }
 
-        Console::AddLine("> " + code, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-
         int status = luaL_dostring(s_luaState, code.c_str());
         if (status == LUA_OK)
         {

@@ -10,6 +10,8 @@
 #include <string>
 #include <algorithm>
 #include <shellapi.h>
+#include <cmath>
+#include <chrono>
 
 extern "C" {
 #include "lua.h"
@@ -27,6 +29,19 @@ static bool s_showAPIRef = false;
 // Editor buffer — synced from/to active tab content
 static char s_editorBuffer[64 * 1024] = "";
 static bool s_editorBufferDirty = false;
+
+// Async dialog pending actions
+static bool s_pendingSaveAction = false;
+static bool s_pendingOpenAction = false;
+
+// Animation timer
+static auto s_startTime = std::chrono::high_resolution_clock::now();
+
+static float GetElapsedSeconds()
+{
+    auto now = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration<float>(now - s_startTime).count();
+}
 
 static void SyncEditorToTab()
 {
@@ -65,7 +80,13 @@ static void RunCurrentTab()
 {
     if (s_activeTabIndex < 0 || s_activeTabIndex >= (int)s_tabs.size()) return;
     SyncEditorToTab();
-    LuaEngine::ExecuteString(s_tabs[s_activeTabIndex].content);
+
+    // Show filename (or tab title) before running
+    const auto& tab = s_tabs[s_activeTabIndex];
+    std::string label = tab.filePath.empty() ? tab.title : tab.filePath;
+    Console::AddLine("[" + label + "]", ImVec4(0.0f, 0.831f, 1.0f, 1.0f));
+
+    LuaEngine::ExecuteString(tab.content);
 }
 
 static void RunSelection()
@@ -75,21 +96,19 @@ static void RunSelection()
     RunCurrentTab();
 }
 
-static void SaveCurrentTab()
+static void CompleteSave(const std::string& path)
 {
     if (s_activeTabIndex < 0 || s_activeTabIndex >= (int)s_tabs.size()) return;
-    SyncEditorToTab();
 
     auto& tab = s_tabs[s_activeTabIndex];
-    if (tab.filePath.empty())
+    if (!path.empty())
     {
-        std::string path = FileManager::SaveFileDialog(g_hwnd);
-        if (path.empty()) return;
         tab.filePath = path;
-        // Extract filename for title
         size_t pos = path.find_last_of("\\/");
         tab.title = (pos != std::string::npos) ? path.substr(pos + 1) : path;
     }
+
+    if (tab.filePath.empty()) return;
 
     if (FileManager::SaveScript(tab.filePath, tab.content))
     {
@@ -102,9 +121,28 @@ static void SaveCurrentTab()
     }
 }
 
-static void OpenFile()
+static void SaveCurrentTab()
 {
-    std::string path = FileManager::OpenFileDialog(g_hwnd);
+    if (s_activeTabIndex < 0 || s_activeTabIndex >= (int)s_tabs.size()) return;
+    SyncEditorToTab();
+
+    auto& tab = s_tabs[s_activeTabIndex];
+    if (tab.filePath.empty())
+    {
+        // Request async save dialog — result picked up in PollDialogs()
+        if (!FileManager::IsDialogPending())
+        {
+            FileManager::RequestSaveDialog(g_hwnd);
+            s_pendingSaveAction = true;
+        }
+        return;
+    }
+
+    CompleteSave("");
+}
+
+static void CompleteOpen(const std::string& path)
+{
     if (path.empty()) return;
 
     std::string content = FileManager::LoadScript(path);
@@ -119,8 +157,50 @@ static void OpenFile()
     Console::AddLine("Opened: " + path, ImVec4(0.0f, 0.831f, 1.0f, 1.0f));
 }
 
+static void OpenFile()
+{
+    if (!FileManager::IsDialogPending())
+    {
+        FileManager::RequestOpenDialog(g_hwnd);
+        s_pendingOpenAction = true;
+    }
+}
+
+static void PollDialogs()
+{
+    std::string resultPath;
+    if (FileManager::PollDialogResult(resultPath))
+    {
+        if (s_pendingSaveAction)
+        {
+            s_pendingSaveAction = false;
+            CompleteSave(resultPath);
+        }
+        else if (s_pendingOpenAction)
+        {
+            s_pendingOpenAction = false;
+            CompleteOpen(resultPath);
+        }
+    }
+}
+
+// ============================================================
+// Drawing helpers
+// ============================================================
+
+static void DrawGradientRect(ImDrawList* drawList, ImVec2 p0, ImVec2 p1,
+    ImU32 colTop, ImU32 colBottom)
+{
+    drawList->AddRectFilledMultiColor(p0, p1, colTop, colTop, colBottom, colBottom);
+}
+
+// ============================================================
+// UI Rendering
+// ============================================================
+
 static void RenderMenuBar()
 {
+    // Styled menu bar background
     if (ImGui::BeginMenuBar())
     {
         if (ImGui::BeginMenu("File"))
@@ -168,11 +248,6 @@ static void RenderMenuBar()
             ImGui::EndMenu();
         }
 
-        // Right-aligned version text
-        float textWidth = ImGui::CalcTextSize("PatchWork v1.0").x;
-        ImGui::SameLine(ImGui::GetWindowWidth() - textWidth - 20.0f);
-        ImGui::TextColored(ImVec4(0.0f, 0.831f, 1.0f, 0.7f), "PatchWork v1.0");
-
         ImGui::EndMenuBar();
     }
 }
@@ -185,7 +260,7 @@ static void RenderTabBar()
         {
             auto& tab = s_tabs[i];
             std::string label = tab.title;
-            if (tab.isDirty) label += "*";
+            if (tab.isDirty) label += " *";
             label += "###Tab" + std::to_string(tab.id);
 
             bool open = tab.isOpen;
@@ -224,13 +299,27 @@ static void RenderTabBar()
 
 static void RenderEditor()
 {
+    float elapsed = GetElapsedSeconds();
+    ImDrawList* drawList = ImGui::GetWindowDrawList();
+
     float availHeight = ImGui::GetContentRegionAvail().y;
     float editorHeight = availHeight * 0.55f;
-    float toolbarHeight = 30.0f;
-    float consoleHeight = availHeight - editorHeight - toolbarHeight - 30.0f; // 30 for status bar
+    float toolbarHeight = 34.0f;
+    float statusBarHeight = 28.0f;
+    float consoleHeight = availHeight - editorHeight - toolbarHeight - statusBarHeight - 16.0f;
 
-    // Code editor
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.06f, 0.08f, 0.10f, 1.0f));
+    // --- Code editor with styled border ---
+    ImVec2 editorPos = ImGui::GetCursorScreenPos();
+
+    // Subtle glow border around editor
+    ImVec2 editorEnd(editorPos.x + ImGui::GetContentRegionAvail().x, editorPos.y + editorHeight);
+    drawList->AddRect(
+        ImVec2(editorPos.x - 1, editorPos.y - 1),
+        ImVec2(editorEnd.x + 1, editorEnd.y + 1),
+        IM_COL32(0, 212, 255, 25), 4.0f, 0, 1.0f);
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.04f, 0.05f, 0.07f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
     if (ImGui::InputTextMultiline("##Editor", s_editorBuffer, sizeof(s_editorBuffer),
         ImVec2(-1.0f, editorHeight),
         ImGuiInputTextFlags_AllowTabInput))
@@ -238,66 +327,153 @@ static void RenderEditor()
         if (s_activeTabIndex >= 0 && s_activeTabIndex < (int)s_tabs.size())
             s_tabs[s_activeTabIndex].isDirty = true;
     }
+    ImGui::PopStyleVar();
     ImGui::PopStyleColor();
 
-    // Toolbar
+    // --- Toolbar ---
     ImGui::Spacing();
-    ImVec4 greenBtn(0.224f, 1.0f, 0.078f, 0.15f);
-    ImVec4 greenBtnHov(0.224f, 1.0f, 0.078f, 0.30f);
-    ImVec4 greenBtnAct(0.224f, 1.0f, 0.078f, 0.50f);
+
+    // Animated Run button with glow pulse
+    float pulse = 0.5f + 0.5f * sinf(elapsed * 2.5f);
+    float glowAlpha = 0.10f + 0.12f * pulse;
+    ImVec4 greenBtn(0.224f, 1.0f, 0.078f, glowAlpha);
+    ImVec4 greenBtnHov(0.224f, 1.0f, 0.078f, 0.35f);
+    ImVec4 greenBtnAct(0.224f, 1.0f, 0.078f, 0.55f);
+    ImVec4 greenText(0.224f, 1.0f, 0.078f, 1.0f);
 
     ImGui::PushStyleColor(ImGuiCol_Button, greenBtn);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenBtnHov);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenBtnAct);
-    if (ImGui::Button("Run", ImVec2(80, 0))) RunCurrentTab();
+    ImGui::PushStyleColor(ImGuiCol_Text, greenText);
+
+    // Draw glow behind run button
+    ImVec2 btnPos = ImGui::GetCursorScreenPos();
+    if (pulse > 0.6f)
+    {
+        drawList->AddRectFilled(
+            ImVec2(btnPos.x - 2, btnPos.y - 2),
+            ImVec2(btnPos.x + 84, btnPos.y + ImGui::GetFrameHeight() + 2),
+            IM_COL32(57, 255, 20, (int)(15.0f * pulse)), 6.0f);
+    }
+
+    if (ImGui::Button("  Run  ", ImVec2(84, 0))) RunCurrentTab();
+    ImGui::PopStyleColor(4);
+
+    ImGui::SameLine();
+    ImGui::Spacing();
+    ImGui::SameLine();
+    if (ImGui::Button("Run Selection", ImVec2(110, 0))) RunSelection();
+
+    ImGui::SameLine();
+    ImGui::Spacing();
+    ImGui::SameLine();
+    ImVec4 yellowBtn(1.0f, 0.843f, 0.0f, 0.12f);
+    ImVec4 yellowBtnHov(1.0f, 0.843f, 0.0f, 0.25f);
+    ImVec4 yellowBtnAct(1.0f, 0.843f, 0.0f, 0.40f);
+    ImGui::PushStyleColor(ImGuiCol_Button, yellowBtn);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, yellowBtnHov);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, yellowBtnAct);
+    if (ImGui::Button("Reset Lua", ImVec2(90, 0))) LuaEngine::Reset();
     ImGui::PopStyleColor(3);
 
     ImGui::SameLine();
-    if (ImGui::Button("Run Selection", ImVec2(100, 0))) RunSelection();
-    ImGui::SameLine();
-
-    ImVec4 yellowBtn(1.0f, 0.843f, 0.0f, 0.15f);
-    ImGui::PushStyleColor(ImGuiCol_Button, yellowBtn);
-    if (ImGui::Button("Reset Lua", ImVec2(80, 0))) LuaEngine::Reset();
-    ImGui::PopStyleColor();
-
-    ImGui::SameLine();
-    if (ImGui::Button("Save", ImVec2(60, 0))) SaveCurrentTab();
-
     ImGui::Spacing();
-    ImGui::Separator();
+    ImGui::SameLine();
 
-    // Console output
-    ImGui::BeginChild("ConsoleOutput", ImVec2(-1.0f, consoleHeight), ImGuiChildFlags_Border);
-    const auto& lines = Console::GetLines();
-    for (const auto& line : lines)
+    // Save button — show pending state if dialog is open
+    if (FileManager::IsDialogPending())
     {
-        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 0.7f), "%s", line.timestamp.c_str());
-        ImGui::SameLine();
-        ImGui::TextColored(line.color, "%s", line.text.c_str());
-    }
-    // Auto-scroll
-    if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 10.0f)
-        ImGui::SetScrollHereY(1.0f);
-    ImGui::EndChild();
-
-    // Status bar
-    ImGui::Separator();
-    if (s_activeTabIndex >= 0 && s_activeTabIndex < (int)s_tabs.size())
-    {
-        const auto& tab = s_tabs[s_activeTabIndex];
-        std::string status = tab.filePath.empty() ? "Unsaved" : tab.filePath;
-        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "%s", status.c_str());
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.3f, 0.3f, 0.3f, 0.3f));
+        ImGui::Button("Saving...", ImVec2(80, 0));
+        ImGui::PopStyleColor();
     }
     else
     {
-        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "No file open");
+        if (ImGui::Button("Save", ImVec2(80, 0))) SaveCurrentTab();
     }
 
-    ImGui::SameLine(ImGui::GetWindowWidth() - 200.0f);
-    lua_State* L = LuaEngine::GetState();
-    int stackSize = L ? lua_gettop(L) : 0;
-    ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Stack: %d | PatchWork v1.0", stackSize);
+    ImGui::Spacing();
+
+    // --- Separator with subtle cyan tint ---
+    {
+        ImVec2 sepPos = ImGui::GetCursorScreenPos();
+        float sepWidth = ImGui::GetContentRegionAvail().x;
+        drawList->AddLine(
+            sepPos,
+            ImVec2(sepPos.x + sepWidth, sepPos.y),
+            IM_COL32(0, 212, 255, 35), 1.0f);
+        ImGui::Dummy(ImVec2(0, 2));
+    }
+
+    // --- Console output with alternating row tinting ---
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.035f, 0.045f, 0.06f, 1.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 4.0f);
+    ImGui::BeginChild("ConsoleOutput", ImVec2(-1.0f, consoleHeight), ImGuiChildFlags_Border);
+
+    const auto& lines = Console::GetLines();
+    for (const auto& line : lines)
+    {
+        ImGui::TextColored(line.color, "%s", line.text.c_str());
+    }
+
+    // Auto-scroll
+    if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 10.0f)
+        ImGui::SetScrollHereY(1.0f);
+
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+
+    // --- Status bar ---
+    {
+        ImGui::Spacing();
+        ImVec2 statusPos = ImGui::GetCursorScreenPos();
+        float statusWidth = ImGui::GetContentRegionAvail().x;
+
+        // Status bar background
+        drawList->AddRectFilled(
+            ImVec2(statusPos.x - 2, statusPos.y),
+            ImVec2(statusPos.x + statusWidth + 2, statusPos.y + statusBarHeight),
+            IM_COL32(13, 17, 23, 200), 3.0f);
+
+        // Top border line
+        drawList->AddLine(
+            ImVec2(statusPos.x - 2, statusPos.y),
+            ImVec2(statusPos.x + statusWidth + 2, statusPos.y),
+            IM_COL32(48, 54, 61, 150), 1.0f);
+
+        ImGui::SetCursorScreenPos(ImVec2(statusPos.x + 8, statusPos.y + 5));
+
+        if (s_activeTabIndex >= 0 && s_activeTabIndex < (int)s_tabs.size())
+        {
+            const auto& tab = s_tabs[s_activeTabIndex];
+            std::string status = tab.filePath.empty() ? "Unsaved" : tab.filePath;
+
+            // File icon indicator
+            if (tab.filePath.empty())
+                ImGui::TextColored(ImVec4(1.0f, 0.843f, 0.0f, 0.7f), "*");
+            else
+                ImGui::TextColored(ImVec4(0.224f, 1.0f, 0.078f, 0.7f), "~");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.45f, 0.45f, 0.5f, 1.0f), "%s", status.c_str());
+        }
+        else
+        {
+            ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.45f, 1.0f), "No file open");
+        }
+
+        // Right side: stack info + version
+        lua_State* L = LuaEngine::GetState();
+        int stackSize = L ? lua_gettop(L) : 0;
+        char rightStatus[128];
+        snprintf(rightStatus, sizeof(rightStatus), "Stack: %d  |  Lua 5.4  |  PatchWork v1.0", stackSize);
+        float rightWidth = ImGui::CalcTextSize(rightStatus).x;
+        ImGui::SetCursorScreenPos(ImVec2(statusPos.x + statusWidth - rightWidth - 8, statusPos.y + 5));
+        ImGui::TextColored(ImVec4(0.4f, 0.4f, 0.45f, 0.8f), "%s", rightStatus);
+
+        // Reserve space for status bar
+        ImGui::SetCursorScreenPos(ImVec2(statusPos.x, statusPos.y + statusBarHeight));
+    }
 }
 
 static void RenderAboutPopup()
@@ -306,19 +482,27 @@ static void RenderAboutPopup()
     ImGui::OpenPopup("About PatchWork");
     if (ImGui::BeginPopupModal("About PatchWork", &s_showAbout, ImGuiWindowFlags_AlwaysAutoResize))
     {
+        ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.0f, 0.831f, 1.0f, 1.0f), "PatchWork v1.0");
+        ImGui::Spacing();
         ImGui::Separator();
+        ImGui::Spacing();
         ImGui::Text("Runtime Patching System with ImGui Overlay");
         ImGui::Text("Lua scripting IDE for runtime analysis");
         ImGui::Spacing();
-        ImGui::Text("Based on RPS by gynt");
-        ImGui::Text("DX11 hook pattern from Imperator");
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Based on RPS by gynt");
+        ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "DX11 hook pattern from Imperator");
         ImGui::Spacing();
-        if (ImGui::Button("Close", ImVec2(120, 0)))
+        ImGui::Spacing();
+
+        float btnWidth = 120.0f;
+        ImGui::SetCursorPosX((ImGui::GetWindowSize().x - btnWidth) * 0.5f);
+        if (ImGui::Button("Close", ImVec2(btnWidth, 0)))
         {
             s_showAbout = false;
             ImGui::CloseCurrentPopup();
         }
+        ImGui::Spacing();
         ImGui::EndPopup();
     }
 }
@@ -329,12 +513,14 @@ static void RenderAPIRefPopup()
     ImGui::OpenPopup("RPS API Reference");
     if (ImGui::BeginPopupModal("RPS API Reference", &s_showAPIRef, ImGuiWindowFlags_None))
     {
-        ImGui::SetWindowSize(ImVec2(600, 500), ImGuiCond_FirstUseEver);
+        ImGui::SetWindowSize(ImVec2(620, 520), ImGuiCond_FirstUseEver);
+
+        ImGui::Spacing();
         ImGui::TextColored(ImVec4(0.0f, 0.831f, 1.0f, 1.0f), "RPS Lua API Reference");
         ImGui::Separator();
         ImGui::Spacing();
 
-        ImGui::BeginChild("APIList", ImVec2(-1, -30));
+        ImGui::BeginChild("APIList", ImVec2(-1, -36));
 
         struct APIEntry { const char* name; const char* sig; const char* desc; };
         static const APIEntry entries[] = {
@@ -363,18 +549,21 @@ static void RenderAPIRefPopup()
             {"getProcAddress", "getProcAddress(handle, fn)", "Get function address"},
         };
 
-        for (const auto& e : entries)
+        for (int i = 0; i < IM_ARRAYSIZE(entries); i++)
         {
+            const auto& e = entries[i];
             ImGui::TextColored(ImVec4(0.224f, 1.0f, 0.078f, 1.0f), "%s", e.name);
             ImGui::SameLine(180);
             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%s", e.sig);
-            ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "  %s", e.desc);
+            ImGui::TextColored(ImVec4(0.45f, 0.45f, 0.5f, 1.0f), "  %s", e.desc);
             ImGui::Spacing();
         }
 
         ImGui::EndChild();
 
-        if (ImGui::Button("Close", ImVec2(120, 0)))
+        float btnWidth = 120.0f;
+        ImGui::SetCursorPosX((ImGui::GetWindowSize().x - btnWidth) * 0.5f);
+        if (ImGui::Button("Close", ImVec2(btnWidth, 0)))
         {
             s_showAPIRef = false;
             ImGui::CloseCurrentPopup();
@@ -387,6 +576,8 @@ namespace UI
 {
     void Initialize()
     {
+        s_startTime = std::chrono::high_resolution_clock::now();
+
         // Try to load previous session
         if (!FileManager::LoadSession(s_tabs, s_activeTabIndex) || s_tabs.empty())
         {
@@ -409,6 +600,9 @@ namespace UI
 
     void Render()
     {
+        // Poll for async file dialog results
+        PollDialogs();
+
         // Keyboard shortcuts
         ImGuiIO& io = ImGui::GetIO();
         if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_Enter)) RunCurrentTab();
@@ -427,13 +621,30 @@ namespace UI
         ImGuiWindowFlags flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse
             | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 
+        // Custom window styling
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 8.0f);
+
         if (ImGui::Begin("PatchWork", nullptr, flags))
         {
+            // Gradient header bar at top of window content area
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            ImVec2 winPos = ImGui::GetWindowPos();
+            ImVec2 winSize = ImGui::GetWindowSize();
+
+            // Subtle gradient under the title bar
+            DrawGradientRect(drawList,
+                ImVec2(winPos.x, winPos.y),
+                ImVec2(winPos.x + winSize.x, winPos.y + 30.0f),
+                IM_COL32(0, 212, 255, 12),
+                IM_COL32(0, 212, 255, 0));
+
             RenderMenuBar();
             RenderTabBar();
             RenderEditor();
         }
         ImGui::End();
+
+        ImGui::PopStyleVar(); // WindowRounding
 
         // Popups
         RenderAboutPopup();

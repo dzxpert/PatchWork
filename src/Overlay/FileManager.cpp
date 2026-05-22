@@ -4,9 +4,14 @@
 #include <filesystem>
 #include <windows.h>
 #include <commdlg.h>
+#include <objbase.h>
 #include <nlohmann/json.hpp>
+#include <thread>
+#include <mutex>
+#include <atomic>
 
 #pragma comment(lib, "comdlg32.lib")
+#pragma comment(lib, "ole32.lib")
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -17,6 +22,60 @@ static const std::string SESSIONS_DIR = ROOT_DIR + "sessions\\";
 static const std::string LOGS_DIR = ROOT_DIR + "logs\\";
 static const std::string SESSION_FILE = SESSIONS_DIR + "last.json";
 
+// ============================================================
+// Async dialog state
+// ============================================================
+enum class DialogState { Idle, Pending, Ready };
+
+static std::atomic<DialogState> s_dialogState{ DialogState::Idle };
+static std::mutex               s_dialogMutex;
+static std::string              s_dialogResultPath;
+static FileManager::DialogType  s_dialogType = FileManager::DialogType::None;
+
+// Worker thread that runs the actual file dialog
+static void DialogWorkerThread(HWND owner, FileManager::DialogType type)
+{
+    // COM must be initialized on this thread for the common dialog to work
+    CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+
+    char filename[MAX_PATH] = "";
+    OPENFILENAMEA ofn = {};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = nullptr;  // Use nullptr — safer from a non-UI thread
+    ofn.lpstrFilter = "Lua Scripts (*.lua)\0*.lua\0All Files (*.*)\0*.*\0";
+    ofn.lpstrFile = filename;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrInitialDir = SCRIPTS_DIR.c_str();
+
+    std::string resultPath;
+
+    if (type == FileManager::DialogType::Open)
+    {
+        ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+        if (GetOpenFileNameA(&ofn))
+            resultPath = filename;
+    }
+    else if (type == FileManager::DialogType::Save)
+    {
+        ofn.lpstrDefExt = "lua";
+        ofn.Flags = OFN_OVERWRITEPROMPT | OFN_NOCHANGEDIR;
+        if (GetSaveFileNameA(&ofn))
+            resultPath = filename;
+    }
+
+    // Store result and signal completion
+    {
+        std::lock_guard<std::mutex> lock(s_dialogMutex);
+        s_dialogResultPath = resultPath;
+    }
+    s_dialogState.store(DialogState::Ready);
+
+    CoUninitialize();
+}
+
+// ============================================================
+// Public API
+// ============================================================
 namespace FileManager
 {
     void EnsureDirectories()
@@ -116,6 +175,50 @@ namespace FileManager
             return false;
         }
     }
+
+    // --- Async dialog API ---
+
+    void RequestOpenDialog(HWND owner)
+    {
+        DialogState expected = DialogState::Idle;
+        if (!s_dialogState.compare_exchange_strong(expected, DialogState::Pending))
+            return; // Another dialog is already open
+
+        s_dialogType = DialogType::Open;
+        std::thread(DialogWorkerThread, owner, DialogType::Open).detach();
+    }
+
+    void RequestSaveDialog(HWND owner)
+    {
+        DialogState expected = DialogState::Idle;
+        if (!s_dialogState.compare_exchange_strong(expected, DialogState::Pending))
+            return; // Another dialog is already open
+
+        s_dialogType = DialogType::Save;
+        std::thread(DialogWorkerThread, owner, DialogType::Save).detach();
+    }
+
+    bool PollDialogResult(std::string& outPath)
+    {
+        if (s_dialogState.load() != DialogState::Ready)
+            return false;
+
+        {
+            std::lock_guard<std::mutex> lock(s_dialogMutex);
+            outPath = s_dialogResultPath;
+            s_dialogResultPath.clear();
+        }
+        s_dialogType = DialogType::None;
+        s_dialogState.store(DialogState::Idle);
+        return true;
+    }
+
+    bool IsDialogPending()
+    {
+        return s_dialogState.load() != DialogState::Idle;
+    }
+
+    // --- Legacy synchronous API (do NOT call from render thread) ---
 
     std::string OpenFileDialog(HWND owner)
     {
