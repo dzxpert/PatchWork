@@ -1,45 +1,33 @@
 # PatchWork [![MSBuild](https://github.com/Meshmash/PatchWork/actions/workflows/msbuild.yml/badge.svg?event=push)](https://github.com/Meshmash/PatchWork/actions/workflows/msbuild.yml)
 
-A runtime memory patching and code hooking library with a Lua scripting API. Supports modifying, detouring, and hooking code in a running process.
-
-Two build targets:
-
-- **Win32 → `RPS.dll`** — A Lua C module (`require("RPS")`) for embedding in an existing Lua environment. Supports x86 calling conventions (cdecl, thiscall, stdcall).
-- **x64 → `PatchWork.dll`** — An injectable DLL with a built-in ImGui overlay (DX11 hook), in-process Lua console, and script runner for 64-bit target processes.
-
-## Usage (Win32 / Lua module)
-
-```lua
-rps = require("RPS")
-rps.hookCode(...)   -- etc.
-```
+An injectable x64 DLL for runtime memory patching and code hooking via Lua scripts. Inject `PatchWork.dll` into a 64-bit process to get an in-process Lua console and script runner backed by an ImGui overlay.
 
 ## Features
 
-### Hooking functions with Lua functions
+### Hooking functions
 
-When function A has been hooked and it is called by the program, the Lua function is called instead.
-The Lua function can then optionally call the original function.
+Replaces a function at a given address with a Lua callback. The callback receives the original arguments and can optionally call through to the original.
 
 ```
-hookCode(luaHookCallback, hookAtAddress, argumentCount, callingConvention, hookSize)
-  callingConvention: 0 = cdecl, 1 = thiscall, 2 = stdcall
+hookCode(luaHookCallback, address, argumentCount, callingConvention, hookSize)
   Returns: the original function
 ```
 
 #### Example
 
 ```lua
-function functionA_hook(this, param_1, param_2)
-    local result = functionA_original(this, param_1, param_2)
+function functionA_hook(arg1, arg2, arg3)
+    local result = functionA_original(arg1, arg2, arg3)
     if result == 1 then result = 0 end
     return result
 end
 
-functionA_original = hookCode(functionA_hook, 0xABCDEF12, 3, 1, 6)
+functionA_original = hookCode(functionA_hook, 0x1400ABCDE, 3, 0, 14)
 ```
 
 ### Exposing functions to Lua
+
+Makes a native function callable from Lua.
 
 ```
 exposeCode(address, argumentCount, callingConvention)
@@ -49,18 +37,14 @@ exposeCode(address, argumentCount, callingConvention)
 #### Example
 
 ```lua
-functionA = exposeCode(0xABCDEF12, 3, 1)
+functionA = exposeCode(0x1400ABCDE, 3, 0)
 
-function yourFunction()
-    local result = functionA(0x12345ABC, -1, 99)
-    if result == 1 then result = 0 end
-    return result
-end
+local result = functionA(0x12345ABC, -1, 99)
 ```
 
-### Detour code
+### Detouring code
 
-Redirects program flow to a Lua function. The callback receives a table of all registers (x86: `EAX`–`EDI`; x64: `RAX`–`R15`) and must return the (possibly modified) table.
+Redirects execution to a Lua callback at a given address. The callback receives a register table (`RAX`–`R15`) and must return it (optionally modified).
 
 ```
 detourCode(luaCallback, address, size)
@@ -70,11 +54,11 @@ detourCode(luaCallback, address, size)
 
 ```lua
 function onDetour(registers)
-    registers.EAX = 1
+    registers.RAX = 1
     return registers
 end
 
-detourCode(onDetour, 0xABCDEF, 7)
+detourCode(onDetour, 0x1400ABCDE, 14)
 ```
 
 ### AOB scanning
@@ -98,7 +82,7 @@ readSmallInteger(address) / writeSmallInteger(address, value)
 readByte(address) / writeByte(address, value)
 copyMemory(dst, src, n)
 setMemory(address, value, n)
-writeCode(address, bytes) -- write code bytes with page protection handling
+writeCode(address, bytes)
 ```
 
 ### Library functions
@@ -109,33 +93,22 @@ getLibraryProcAddressA(module, name)
 getProcAddress(name)
 ```
 
-## x64 Overlay
+## Overlay
 
-When injected as `PatchWork.dll` into a 64-bit process, the overlay provides:
+After injection, press **INSERT** to toggle the ImGui overlay.
 
-- **INSERT** — toggle the ImGui overlay
-- **Ctrl+Enter** — execute the current script
-- Script editor with tabs, file open/save, and session persistence
-- Lua console with colored output
-- Scripts and sessions stored under `C:\PatchWork\`
+- **Console tab** — Lua REPL with colored output; `print()` routes here
+- **Scripts tab** — editor with file open/save, tab management, and session persistence
+- **Ctrl+Enter** — run the current script
+- Scripts and sessions stored under `C:\PatchWork\scripts\`
 
 ## Building
 
 Requires Visual Studio 2022 (toolset v143) with the MASM build customization installed.
 
 ```
-msbuild /m /p:Platform=x86 /p:Configuration=Release PatchWork.sln   # Win32 RPS.dll
-msbuild /m /p:Platform=x64 /p:Configuration=Release PatchWork.sln   # x64 PatchWork.dll
+msbuild /m /p:Platform=x64 /p:Configuration=Debug   PatchWork.sln
+msbuild /m /p:Platform=x64 /p:Configuration=Release PatchWork.sln
 ```
 
-Restore NuGet packages before the first build: `nuget restore`
-
-Initialize submodules for x64: `git submodule update --init --recursive`
-
-## Running tests
-
-Tests run against the Win32 Release build using Lua 5.4:
-
-```powershell
-.\tests\run.ps1
-```
+NuGet packages and submodules are restored automatically on first build.
