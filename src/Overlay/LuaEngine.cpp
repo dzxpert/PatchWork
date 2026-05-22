@@ -41,7 +41,7 @@ namespace LuaEngine
         lua_pushcfunction(s_luaState, lua_print_override);
         lua_setglobal(s_luaState, "print");
 
-        // Set package.path to include RuntimeREV scripts directory
+        // Set package.path to include PatchWork scripts directory
         RPS_setupPackagePath(s_luaState, "C:\\PatchWork\\scripts\\?.lua");
 
         Console::AddLine("Lua engine initialized", ImVec4(0.0f, 0.831f, 1.0f, 1.0f));

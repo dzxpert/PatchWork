@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls vendor/imgui)",
+      "Bash(ls vendor/minhook)",
+      "Bash(ls vendor/json)",
+      "Bash(cd \"C:\\\\Users\\\\xWantedStore\\\\Documents\\\\GitHub\\\\PatchWork\" && rm -f obj/RuntimePatchingSystem.vcxproj.nuget.* obj/project.assets.json obj/project.nuget.cache && echo \"Cleaned stale obj files\")",
+      "Bash(nuget restore *)",
+      "PowerShell(where.exe msbuild 2>$null; \\(Get-Command msbuild -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell($nuget = Get-ChildItem \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\" -Recurse -Filter \"nuget.exe\" -ErrorAction SilentlyContinue | Select-Object -First 1; if \\($nuget\\) { $nuget.FullName } else { \"not found\" })",
+      "PowerShell($msbuild = \"C:\\\\Program Files\\\\Microsoft Visual Studio\\\\2022\\\\Community\\\\MSBuild\\\\Current\\\\Bin\\\\MSBuild.exe\"; & $msbuild /t:Restore /p:Platform=x86 /p:Configuration=Release \"C:\\\\Users\\\\xWantedStore\\\\Documents\\\\GitHub\\\\PatchWork\\\\PatchWork.vcxproj\" /v:minimal 2>&1 | Select-Object -Last 20)",
+      "Bash(grep -n \"ApplyRuntimeRevTheme\\\\|RuntimeRev\\\\|RuntimeREV\\\\|RuntimePatchingSystem\\\\|C:\\\\\\\\\\\\\\\\RuntimeREV\" src/Overlay/Renderer.cpp src/Overlay/UI.cpp src/Overlay/FileManager.cpp src/Overlay/LuaEngine.cpp)",
+      "Bash(ls Debug/)",
+      "Bash(ls PatchWork/)",
+      "PowerShell(Get-ChildItem \"$env:USERPROFILE\\\\.nuget\\\\packages\" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -match \"lua\" } | Select-Object FullName | Select-Object -First 20)",
+      "PowerShell($luaTargets = \"$env:USERPROFILE\\\\.nuget\\\\packages\\\\lua\\\\5.4.6\\\\build\\\\native\\\\Lua.targets\"; if \\(Test-Path $luaTargets\\) { Get-Content $luaTargets } else { \"Not found - checking global cache...\"; Get-ChildItem \"$env:ProgramData\\\\NuGet\" -Recurse -Filter \"Lua.targets\" -ErrorAction SilentlyContinue | Select-Object -First 3 -ExpandProperty FullName })"
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 // dllmain.cpp : Defines the entry point for the DLL application.
 
 #include "framework.h"
-#include "Overlay/PatchWork.h"
+#include "Overlay/PatchWorkOverlay.h"
 
 static HMODULE g_hModule = nullptr;
 

@@ -139,7 +139,7 @@ static void RenderMenuBar()
             }
             ImGui::Separator();
             if (ImGui::MenuItem("Open Scripts Folder"))
-                ShellExecuteA(nullptr, "open", "C:\\RuntimeREV\\scripts\\", nullptr, nullptr, SW_SHOWDEFAULT);
+                ShellExecuteA(nullptr, "open", "C:\\PatchWork\\scripts\\", nullptr, nullptr, SW_SHOWDEFAULT);
             ImGui::Separator();
             if (ImGui::MenuItem("Exit"))
                 g_ShowOverlay = false;
