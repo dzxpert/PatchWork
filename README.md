@@ -1,4 +1,4 @@
-# PatchWork [![MSBuild](https://github.com/Meshmash/PatchWork/actions/workflows/msbuild.yml/badge.svg?event=push)](https://github.com/Meshmash/PatchWork/actions/workflows/msbuild.yml)
+# PatchWork [![MSBuild](https://github.com/dzxpert/PatchWork/actions/workflows/msbuild.yml/badge.svg?event=push)](https://github.com/dzxpert/PatchWork/actions/workflows/msbuild.yml)
 
 An injectable x64 DLL for runtime memory patching and code hooking via Lua scripts. Inject `PatchWork.dll` into a 64-bit process to get an in-process Lua console and script runner backed by an ImGui overlay.
 
