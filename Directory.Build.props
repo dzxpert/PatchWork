@@ -49,7 +49,7 @@
       <PackagePath>build\native\lib\Win32\v143\Release</PackagePath>
     </Content>
 
-    <Content Include="PatchWork.h">
+    <Content Include="src\PatchWork.h">
       <Pack>true</Pack>
       <PackagePath>build\native\include</PackagePath>
     </Content>

@@ -40,9 +40,9 @@ The script auto-installs Lua 5.4.6 from NuGet and copies `Release\RPS.dll` if no
 
 ## Architecture
 
-### Core layer (both platforms): `*.cpp / *.h` in root
+### Core layer (both platforms): `src/*.cpp / src/*.h`
 
-- **`PatchWork.h/.cpp`** — Public C++ API (`RPS_initialize`, `RPS_initializeLuaAPI`, `RPS_executeSnippet`, etc.) and the `RPS_LIB` Lua function registration table. Also implements `luaopen_RPS` so the DLL can be loaded via `require("RPS")`. Export macro: `PATCHWORK_API` (controlled by `PATCHWORKLIBRARY_EXPORTS` preprocessor define).
+- **`src/PatchWork.h/.cpp`** — Public C++ API (`RPS_initialize`, `RPS_initializeLuaAPI`, `RPS_executeSnippet`, etc.) and the `RPS_LIB` Lua function registration table. Also implements `luaopen_RPS` so the DLL can be loaded via `require("RPS")`. Export macro: `PATCHWORK_API` (controlled by `PATCHWORKLIBRARY_EXPORTS` preprocessor define).
 - **`CodeFunctions.h/.cpp`** — Heart of the hooking engine. Contains `LuaHook` (function hooking) and `LuaDetour` (code detouring) classes, `DoCreateCallHook` (installs the trampoline), `luaHookCode`, `luaExposeCode`, `luaDetourCode`, and `luaCallMachineCode`. x86 uses inline `__asm`; x64 delegates to MASM stubs.
 - **`CodeFunctions_x64.asm`** — MASM assembly for x64: `CallMachineCode_x64` (dynamically marshals args into Windows x64 ABI), `LuaLandingFromCpp_x64` (hook trampoline), `detourLandingFunction_x64` (detour trampoline).
 - **`MemoryFunctions.h/.cpp`** — Lua-callable memory R/W: `readByte/SmallInteger/Integer/String/Bytes`, `writeByte/…`, `allocate/deallocate`, `copyMemory`, `setMemory`.
@@ -51,11 +51,11 @@ The script auto-installs Lua 5.4.6 from NuGet and copies `Release\RPS.dll` if no
 - **`Memory.h`** — `ProcessMemory` singleton: owns the executable heap (`HeapCreate(HEAP_CREATE_ENABLE_EXECUTE)`) used by `allocateCode` and hook trampolines.
 - **`UtilityFunctions.h/.cpp`** — Shared helpers; defines the global `LC` (lua_State*).
 
-### Overlay layer (x64 only): `Overlay/`
+### Overlay layer (x64 only): `src/Overlay/`
 
 Activated via `dllmain.cpp` → `PatchWork::Initialize` on `DLL_PROCESS_ATTACH`. Depends on MinHook (hook management) and Dear ImGui (rendering via DX11).
 
-- **`Overlay/PatchWork.h/.cpp`** — Top-level coordinator: initializes MinHook, installs DX11 hooks, starts LuaEngine, sets up FileManager and UI.
+- **`src/Overlay/PatchWork.h/.cpp`** — Top-level coordinator: initializes MinHook, installs DX11 hooks, starts LuaEngine, sets up FileManager and UI.
 - **`Overlay/DX11Hook.cpp`** — Hooks `IDXGISwapChain::Present` and `ResizeBuffers` using MinHook to inject ImGui rendering each frame.
 - **`Overlay/Renderer.cpp`** — Wraps ImGui frame begin/end; applies the `ApplyPatchWorkTheme` color scheme.
 - **`Overlay/UI.cpp`** — ImGui window: INSERT key toggles visibility; tabs for Console and Script management.

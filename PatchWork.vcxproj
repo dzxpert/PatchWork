@@ -26,7 +26,7 @@
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <!-- Win32 configurations (original) -->
+  <!-- Win32 configurations -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -40,7 +40,7 @@
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
-  <!-- x64 configurations (new) -->
+  <!-- x64 configurations -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
@@ -100,7 +100,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;PATCHWORKLIBRARY_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -119,7 +119,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;PATCHWORKLIBRARY_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -138,7 +138,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;PATCHWORKLIBRARY_EXPORTS;IMGUI_DEFINE_MATH_OPERATORS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\imgui\backends;$(ProjectDir)vendor\minhook\include;$(ProjectDir)vendor\json;$(ProjectDir)Overlay;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\imgui\backends;$(ProjectDir)vendor\minhook\include;$(ProjectDir)vendor\json;$(ProjectDir)src\Overlay;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -160,7 +160,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;PATCHWORKLIBRARY_EXPORTS;IMGUI_DEFINE_MATH_OPERATORS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\imgui\backends;$(ProjectDir)vendor\minhook\include;$(ProjectDir)vendor\json;$(ProjectDir)Overlay;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;$(ProjectDir)vendor\imgui;$(ProjectDir)vendor\imgui\backends;$(ProjectDir)vendor\minhook\include;$(ProjectDir)vendor\json;$(ProjectDir)src\Overlay;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
@@ -176,51 +176,51 @@
   <!-- Non-compiled items -->
   <ItemGroup>
     <None Include=".gitignore" />
-    <None Include="cpp.hint" />
     <None Include="Directory.Build.props" />
     <None Include="LICENSE" />
     <None Include="README.md" />
     <None Include="RPS.targets" />
     <None Include="PatchWork.nuspec" />
+    <None Include="src\cpp.hint" />
   </ItemGroup>
   <!-- Header files -->
   <ItemGroup>
-    <ClInclude Include="AOB.h" />
-    <ClInclude Include="CodeFunctions.h" />
-    <ClInclude Include="framework.h" />
-    <ClInclude Include="LibraryFunctions.h" />
-    <ClInclude Include="Memory.h" />
-    <ClInclude Include="PatchWork.h" />
-    <ClInclude Include="MemoryFunctions.h" />
-    <ClInclude Include="UtilityFunctions.h" />
+    <ClInclude Include="src\AOB.h" />
+    <ClInclude Include="src\CodeFunctions.h" />
+    <ClInclude Include="src\framework.h" />
+    <ClInclude Include="src\LibraryFunctions.h" />
+    <ClInclude Include="src\Memory.h" />
+    <ClInclude Include="src\PatchWork.h" />
+    <ClInclude Include="src\MemoryFunctions.h" />
+    <ClInclude Include="src\UtilityFunctions.h" />
     <!-- Overlay headers -->
-    <ClInclude Include="Overlay\PatchWork.h" />
-    <ClInclude Include="Overlay\DX11Hook.h" />
-    <ClInclude Include="Overlay\Renderer.h" />
-    <ClInclude Include="Overlay\UI.h" />
-    <ClInclude Include="Overlay\LuaEngine.h" />
-    <ClInclude Include="Overlay\Console.h" />
-    <ClInclude Include="Overlay\ScriptTab.h" />
-    <ClInclude Include="Overlay\FileManager.h" />
+    <ClInclude Include="src\Overlay\PatchWork.h" />
+    <ClInclude Include="src\Overlay\DX11Hook.h" />
+    <ClInclude Include="src\Overlay\Renderer.h" />
+    <ClInclude Include="src\Overlay\UI.h" />
+    <ClInclude Include="src\Overlay\LuaEngine.h" />
+    <ClInclude Include="src\Overlay\Console.h" />
+    <ClInclude Include="src\Overlay\ScriptTab.h" />
+    <ClInclude Include="src\Overlay\FileManager.h" />
   </ItemGroup>
   <!-- Source files -->
   <ItemGroup>
-    <!-- Existing RPS sources -->
-    <ClCompile Include="AOB.cpp" />
-    <ClCompile Include="CodeFunctions.cpp" />
-    <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="LibraryFunctions.cpp" />
-    <ClCompile Include="PatchWork.cpp" />
-    <ClCompile Include="MemoryFunctions.cpp" />
-    <ClCompile Include="UtilityFunctions.cpp" />
+    <!-- Core sources -->
+    <ClCompile Include="src\AOB.cpp" />
+    <ClCompile Include="src\CodeFunctions.cpp" />
+    <ClCompile Include="src\dllmain.cpp" />
+    <ClCompile Include="src\LibraryFunctions.cpp" />
+    <ClCompile Include="src\PatchWork.cpp" />
+    <ClCompile Include="src\MemoryFunctions.cpp" />
+    <ClCompile Include="src\UtilityFunctions.cpp" />
     <!-- Overlay sources -->
-    <ClCompile Include="Overlay\PatchWork.cpp" />
-    <ClCompile Include="Overlay\DX11Hook.cpp" />
-    <ClCompile Include="Overlay\Renderer.cpp" />
-    <ClCompile Include="Overlay\UI.cpp" />
-    <ClCompile Include="Overlay\LuaEngine.cpp" />
-    <ClCompile Include="Overlay\Console.cpp" />
-    <ClCompile Include="Overlay\FileManager.cpp" />
+    <ClCompile Include="src\Overlay\PatchWork.cpp" />
+    <ClCompile Include="src\Overlay\DX11Hook.cpp" />
+    <ClCompile Include="src\Overlay\Renderer.cpp" />
+    <ClCompile Include="src\Overlay\UI.cpp" />
+    <ClCompile Include="src\Overlay\LuaEngine.cpp" />
+    <ClCompile Include="src\Overlay\Console.cpp" />
+    <ClCompile Include="src\Overlay\FileManager.cpp" />
     <!-- ImGui sources -->
     <ClCompile Include="vendor\imgui\imgui.cpp" />
     <ClCompile Include="vendor\imgui\imgui_draw.cpp" />
@@ -231,7 +231,7 @@
   </ItemGroup>
   <!-- MASM assembly (x64 only) -->
   <ItemGroup>
-    <MASM Include="CodeFunctions_x64.asm">
+    <MASM Include="src\CodeFunctions_x64.asm">
       <ExcludedFromBuild Condition="'$(Platform)'=='Win32'">true</ExcludedFromBuild>
     </MASM>
   </ItemGroup>

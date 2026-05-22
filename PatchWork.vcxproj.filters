@@ -15,60 +15,60 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="cpp.hint" />
     <None Include="README.md" />
     <None Include="LICENSE" />
     <None Include=".gitignore" />
     <None Include="RPS.targets" />
     <None Include="PatchWork.nuspec" />
     <None Include="Directory.Build.props" />
+    <None Include="src\cpp.hint" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="framework.h">
+    <ClInclude Include="src\framework.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AOB.h">
+    <ClInclude Include="src\AOB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MemoryFunctions.h">
+    <ClInclude Include="src\MemoryFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="CodeFunctions.h">
+    <ClInclude Include="src\CodeFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="UtilityFunctions.h">
+    <ClInclude Include="src\UtilityFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="PatchWork.h">
+    <ClInclude Include="src\PatchWork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Memory.h">
+    <ClInclude Include="src\Memory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="LibraryFunctions.h">
+    <ClInclude Include="src\LibraryFunctions.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dllmain.cpp">
+    <ClCompile Include="src\dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AOB.cpp">
+    <ClCompile Include="src\AOB.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MemoryFunctions.cpp">
+    <ClCompile Include="src\MemoryFunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CodeFunctions.cpp">
+    <ClCompile Include="src\CodeFunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="UtilityFunctions.cpp">
+    <ClCompile Include="src\UtilityFunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="PatchWork.cpp">
+    <ClCompile Include="src\PatchWork.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="LibraryFunctions.cpp">
+    <ClCompile Include="src\LibraryFunctions.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

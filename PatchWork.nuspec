@@ -25,7 +25,7 @@
     <file src="Debug\RPS.pdb" target="build\native\lib\Win32\v143\Debug"/>
     <file src="Release\RPS.dll" target="build\native\bin\Win32\v143\Release"/>
     <file src="Release\RPS.lib" target="build\native\lib\Win32\v143\Release"/>
-    <file src="PatchWork.h" target="build\native\include"/>
+    <file src="src\PatchWork.h" target="build\native\include"/>
     <file src="RPS.targets" target="build\native"/>
     <file src="RPS-propertiesui.xml" target="build\native"/>
     <file src="README.md" target="build"/>
