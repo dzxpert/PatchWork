@@ -13,6 +13,9 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1
 
+    - name: Restore NuGet packages
+      run: msbuild /t:Restore /p:Platform=x64 PatchWork.sln
+
     - name: Build Debug
       run: msbuild /m /p:Platform=x64 /p:Configuration=Debug PatchWork.sln
 
