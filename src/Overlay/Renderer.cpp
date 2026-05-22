@@ -202,15 +202,22 @@ static void PollInput(HWND hWnd)
     update_key(ImGuiKey_PageUp, VK_PRIOR);
     update_key(ImGuiKey_PageDown, VK_NEXT);
 
-    // --- Layout-aware character input via ToUnicodeEx ---
-    // Works correctly with AZERTY, QWERTZ, and all other keyboard layouts.
-    // Instead of hardcoding which character each VK produces, we ask Windows
-    // to translate the key press using the active keyboard layout.
-    BYTE keyboardState[256];
-    GetKeyboardState(keyboardState);
+    // --- Layout-aware character input ---
+    // Build keyboard state manually from GetAsyncKeyState since
+    // GetKeyboardState() is empty on the render/hook thread (no message pump).
+    BYTE keyboardState[256] = {};
+    for (int k = 0; k < 256; k++)
+    {
+        if (GetAsyncKeyState(k) & 0x8000)
+            keyboardState[k] = 0x80;
+    }
+    // Toggle state for caps lock / num lock
+    if (GetKeyState(VK_CAPITAL) & 1) keyboardState[VK_CAPITAL] |= 0x01;
+    if (GetKeyState(VK_NUMLOCK) & 1) keyboardState[VK_NUMLOCK] |= 0x01;
+
     HKL layout = GetKeyboardLayout(0);
 
-    // Update ImGuiKey events for alphanumeric keys (needed for shortcuts)
+    // Update ImGuiKey events for alphanumeric keys (needed for Ctrl+shortcuts)
     for (int i = 0x30; i <= 0x39; ++i)
         update_key((ImGuiKey)(ImGuiKey_0 + (i - 0x30)), i);
     for (int i = 0x41; i <= 0x5A; ++i)
@@ -218,29 +225,72 @@ static void PollInput(HWND hWnd)
 
     // All virtual keys that can produce printable characters
     static const int charVKeys[] = {
-        // 0-9
         0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
-        // A-Z
         0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4A,
         0x4B, 0x4C, 0x4D, 0x4E, 0x4F, 0x50, 0x51, 0x52, 0x53, 0x54,
         0x55, 0x56, 0x57, 0x58, 0x59, 0x5A,
-        // OEM keys (symbols, punctuation)
         VK_OEM_1, VK_OEM_2, VK_OEM_3, VK_OEM_4, VK_OEM_5, VK_OEM_6, VK_OEM_7, VK_OEM_8,
         VK_OEM_COMMA, VK_OEM_PERIOD, VK_OEM_MINUS, VK_OEM_PLUS, VK_OEM_102,
+        VK_SPACE,
     };
+    static const int numCharVKeys = sizeof(charVKeys) / sizeof(charVKeys[0]);
 
-    for (int vk : charVKeys)
+    // Edge detection + key repeat: track state per VK
+    static bool  prevHeld[256] = {};
+    static float holdTime[256] = {};
+    const float  repeatDelay  = 0.30f; // initial delay before repeat starts
+    const float  repeatRate   = 0.033f; // ~30 chars/sec while held
+    float dt = io.DeltaTime;
+
+    for (int idx = 0; idx < numCharVKeys; idx++)
     {
-        if (!(GetAsyncKeyState(vk) & 1))
+        int vk = charVKeys[idx];
+        bool held = (GetAsyncKeyState(vk) & 0x8000) != 0;
+
+        bool fire = false;
+        if (held && !prevHeld[vk])
+        {
+            fire = true;                   // key just pressed
+            holdTime[vk] = 0.0f;
+        }
+        else if (held)
+        {
+            holdTime[vk] += dt;
+            if (holdTime[vk] >= repeatDelay)
+            {
+                holdTime[vk] -= repeatRate; // fire repeats at repeatRate
+                fire = true;
+            }
+        }
+        else
+        {
+            holdTime[vk] = 0.0f;
+        }
+        prevHeld[vk] = held;
+
+        if (!fire)
+            continue;
+
+        // Don't generate characters when Ctrl is held (shortcuts like Ctrl+C)
+        if (keyboardState[VK_CONTROL] & 0x80)
             continue;
 
         UINT scanCode = MapVirtualKeyEx(vk, MAPVK_VK_TO_VSC, layout);
         wchar_t buf[4] = {};
         int result = ToUnicodeEx(vk, scanCode, keyboardState, buf, 4, 0, layout);
+
         if (result > 0)
         {
             for (int c = 0; c < result; c++)
                 io.AddInputCharacterUTF16(buf[c]);
+        }
+        else if (result == -1)
+        {
+            // Dead key (e.g. ^ on AZERTY) — consume it, the next key press
+            // will combine with it via ToUnicodeEx's internal state.
+            // Flush the dead key state by calling ToUnicodeEx again with a dummy.
+            wchar_t dummy[4] = {};
+            ToUnicodeEx(vk, scanCode, keyboardState, dummy, 4, 0, layout);
         }
     }
 }
