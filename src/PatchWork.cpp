@@ -48,6 +48,7 @@ const struct luaL_Reg RPS_LIB[] = {
 	{"loadLibraryA", luaLoadLibraryA},
 	{"getLibraryProcAddressA", luaGetLibraryProcAddressA},
 	{"getProcAddress", luaGetProcAddress},
+	{"getAddress", luaGetAddress},
 
 	{"readByte", luaReadByte},
 	{"readSmallInteger", luaReadSmallInteger},

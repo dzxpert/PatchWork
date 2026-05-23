@@ -125,6 +125,7 @@
     <ClInclude Include="src\Overlay\FileManager.h" />
     <ClInclude Include="src\Overlay\JetBrainsMonoFont.h" />
     <ClInclude Include="src\Overlay\SyntaxHighlight.h" />
+    <ClInclude Include="src\Overlay\MCPServer.h" />
   </ItemGroup>
   <!-- Source files -->
   <ItemGroup>
@@ -142,6 +143,7 @@
     <ClCompile Include="src\Overlay\LuaEngine.cpp" />
     <ClCompile Include="src\Overlay\Console.cpp" />
     <ClCompile Include="src\Overlay\FileManager.cpp" />
+    <ClCompile Include="src\Overlay\MCPServer.cpp" />
     <ClCompile Include="vendor\imgui\imgui.cpp" />
     <ClCompile Include="vendor\imgui\imgui_draw.cpp" />
     <ClCompile Include="vendor\imgui\imgui_widgets.cpp" />

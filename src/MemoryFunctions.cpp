@@ -7,7 +7,7 @@ int luaReadByte(lua_State* L) {
 	if (lua_gettop(L) != 1) {
 		return luaL_error(L, "expected exactly 1 argument");
 	}
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -19,7 +19,7 @@ int luaReadSmallInteger(lua_State* L) {
 	if (lua_gettop(L) != 1) {
 		return luaL_error(L, "expected exactly 1 argument");
 	}
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -32,7 +32,7 @@ int luaReadInteger(lua_State* L) {
 	if (lua_gettop(L) != 1) {
 		return luaL_error(L, "expected exactly 1 argument");
 	}
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -42,7 +42,7 @@ int luaReadInteger(lua_State* L) {
 }
 
 int luaReadString(lua_State* L) {
-	DWORD address = 0;
+	uintptr_t address = 0;
 	size_t length = 0;
 	bool wide = false;
 	if (lua_gettop(L) == 0) {
@@ -83,7 +83,7 @@ int luaReadBytes(lua_State* L) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
 
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -108,7 +108,7 @@ int luaWriteString(lua_State* L) {
 	if (lua_gettop(L) != 2) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -131,7 +131,7 @@ int luaWriteByte(lua_State* L) {
 	if (lua_gettop(L) != 2) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -152,7 +152,7 @@ int luaWriteSmallInteger(lua_State* L) {
 	if (lua_gettop(L) != 2) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -173,7 +173,7 @@ int luaWriteInteger(lua_State* L) {
 	if (lua_gettop(L) != 2) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -194,7 +194,7 @@ int luaWriteBytes(lua_State* L) {
 	if (lua_gettop(L) != 2) {
 		return luaL_error(L, "expected exactly 2 arguments");
 	}
-	DWORD address = lua_tointeger(L, 1);
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -237,12 +237,12 @@ int luaMemCpy(lua_State* L) {
 		return luaL_error(L, "expected exactly 3 arguments");
 	}
 
-	DWORD dst = lua_tointeger(L, 1);
+	uintptr_t dst = (uintptr_t)lua_tointeger(L, 1);
 	if (dst == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
 	
-	DWORD src = lua_tointeger(L, 2);
+	uintptr_t src = (uintptr_t)lua_tointeger(L, 2);
 	if (src == 0) {
 		return luaL_error(L, "argument 2 must be a valid address");
 	}
@@ -270,7 +270,7 @@ int luaMemSet(lua_State* L) {
 		return luaL_error(L, "expected exactly 3 arguments");
 	}
 
-	DWORD dst = lua_tointeger(L, 1);
+	uintptr_t dst = (uintptr_t)lua_tointeger(L, 1);
 	if (dst == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
@@ -309,7 +309,7 @@ int registerString(lua_State* L) {
 	std::pair<std::set<std::string>::iterator, bool> p = stringSet.insert(target);
 
 	std::set<std::string>::iterator it = p.first;
-	lua_pushinteger(L, (DWORD)p.first->c_str());
+	lua_pushinteger(L, (lua_Integer)(uintptr_t)p.first->c_str());
 
 	return 1;
 }
@@ -341,7 +341,7 @@ int luaDeallocate(lua_State* L) {
 		return luaL_error(L, "Expected one argument");
 	}
 
-	int addr = luaL_checkinteger(L, 1);
+	uintptr_t addr = (uintptr_t)luaL_checkinteger(L, 1);
 	if (addr == 0) {
 		return luaL_error(L, "Address is 0");
 	}

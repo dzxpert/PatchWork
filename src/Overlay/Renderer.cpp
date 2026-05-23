@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "DX11Hook.h"
 #include "UI.h"
+#include "MCPServer.h"
 #include "JetBrainsMonoFont.h"
 
 #include <imgui.h>
@@ -352,6 +353,9 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
     if (bInit)
     {
         PollInput(g_hwnd);
+
+        // Process queued MCP commands (Lua execution on render thread)
+        MCPServer::Poll();
 
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();

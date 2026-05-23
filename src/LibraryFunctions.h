@@ -6,3 +6,4 @@
 int luaLoadLibraryA(lua_State* L);
 int luaGetLibraryProcAddressA(lua_State* L);
 int luaGetProcAddress(lua_State* L);
+int luaGetAddress(lua_State* L);

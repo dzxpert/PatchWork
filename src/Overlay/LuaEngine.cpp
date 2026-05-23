@@ -7,6 +7,9 @@
 
 static lua_State* s_luaState = nullptr;
 
+// Thread-local capture for capturing print statement output during execute_lua
+thread_local std::string* t_capturedOutput = nullptr;
+
 // Custom print function that redirects output to the Console
 static int lua_print_override(lua_State* L)
 {
@@ -20,6 +23,13 @@ static int lua_print_override(lua_State* L)
         lua_pop(L, 1); // pop the string from luaL_tolstring
     }
     Console::AddLine(result);
+
+    if (t_capturedOutput)
+    {
+        if (!t_capturedOutput->empty()) *t_capturedOutput += "\n";
+        *t_capturedOutput += result;
+    }
+
     return 0;
 }
 
@@ -75,7 +85,13 @@ namespace LuaEngine
             return result;
         }
 
+        std::string captured;
+        t_capturedOutput = &captured;
+
         int status = luaL_dostring(s_luaState, code.c_str());
+
+        t_capturedOutput = nullptr;
+
         if (status == LUA_OK)
         {
             result.success = true;
@@ -89,6 +105,10 @@ namespace LuaEngine
                     Console::AddLine(result.output);
                 }
                 lua_pop(s_luaState, 2); // pop result + tolstring
+            }
+            else
+            {
+                result.output = captured;
             }
         }
         else

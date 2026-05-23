@@ -4,6 +4,7 @@
 #include "FileManager.h"
 #include "Console.h"
 #include "UI.h"
+#include "MCPServer.h"
 
 #include <MinHook.h>
 #pragma comment(lib, "libMinHook.x64.lib")
@@ -40,10 +41,13 @@ namespace PatchWork
         // Initialize UI (loads previous session)
         UI::Initialize();
 
+        // Start MCP server (localhost:1339)
+        MCPServer::Start();
+
         // Welcome message
         Console::AddLine("PatchWork v1.0 loaded", ImVec4(0.0f, 0.831f, 1.0f, 1.0f));
         Console::AddLine("Press INSERT to toggle overlay", ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-        Console::AddLine("Press Ctrl+Enter to execute code", ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+        Console::AddLine("MCP server on localhost:1339", ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
 
         s_initialized = true;
     }
@@ -51,6 +55,9 @@ namespace PatchWork
     void Shutdown()
     {
         if (!s_initialized) return;
+
+        // Stop MCP server
+        MCPServer::Stop();
 
         // Save session
         UI::Shutdown();
