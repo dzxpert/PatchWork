@@ -1,5 +1,7 @@
 # PatchWork [![MSBuild](https://github.com/dzxpert/PatchWork/actions/workflows/msbuild.yml/badge.svg?event=push)](https://github.com/dzxpert/PatchWork/actions/workflows/msbuild.yml)
 
+![Kohina Smile](https://media1.tenor.com/m/4Nrb_TmsTEMAAAAd/anime-kohina.gif)
+
 An injectable x64 DLL for runtime memory patching and code hooking via Lua scripts. Inject `PatchWork.dll` into a 64-bit process to get an in-process Lua console and script runner backed by an ImGui overlay.
 
 ## Features
