@@ -352,3 +352,28 @@ int luaDeallocate(lua_State* L) {
 	return 0;
 }
 
+int luaReadQword(lua_State* L) {
+	if (lua_gettop(L) != 1) {
+		return luaL_error(L, "expected exactly 1 argument");
+	}
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+	lua_pushinteger(L, (lua_Integer)*((unsigned long long*)address));
+	return 1;
+}
+
+int luaWriteQword(lua_State* L) {
+	if (lua_gettop(L) != 2) {
+		return luaL_error(L, "expected exactly 2 arguments");
+	}
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+	unsigned long long value = lua_tointeger(L, 2);
+	*((unsigned long long*)address) = value;
+	return 0;
+}
+

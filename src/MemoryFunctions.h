@@ -36,3 +36,6 @@ int luaMemSet(lua_State* L);
 int luaAllocate(lua_State* L);
 
 int luaDeallocate(lua_State* L);
+
+int luaReadQword(lua_State* L);
+int luaWriteQword(lua_State* L);

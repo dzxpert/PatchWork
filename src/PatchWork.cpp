@@ -53,12 +53,14 @@ const struct luaL_Reg RPS_LIB[] = {
 	{"readByte", luaReadByte},
 	{"readSmallInteger", luaReadSmallInteger},
 	{"readInteger", luaReadInteger},
+	{"readQword", luaReadQword},
 	{"readString", luaReadString},
 	{"readBytes", luaReadBytes},
 
 	{"writeByte", luaWriteByte},
 	{"writeSmallInteger", luaWriteSmallInteger},
 	{"writeInteger", luaWriteInteger},
+	{"writeQword", luaWriteQword},
 	{"writeString", luaWriteString},
 	{"writeBytes", luaWriteBytes},
 	

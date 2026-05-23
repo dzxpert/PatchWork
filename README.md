@@ -82,6 +82,7 @@ readBytes(address, n)    -- returns table of n bytes
 writeBytes(address, data)
 readString(address)      -- null-terminated ASCII
 readInteger(address) / writeInteger(address, value)
+readQword(address) / writeQword(address, value)     -- read/write 64-bit pointers (QWORDs)
 readSmallInteger(address) / writeSmallInteger(address, value)
 readByte(address) / writeByte(address, value)
 copyMemory(dst, src, n)
