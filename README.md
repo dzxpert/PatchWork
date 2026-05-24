@@ -75,6 +75,10 @@ scanForAOB(searchPattern[, min, max])
 
 ### Memory functions
 
+All memory read, write, copy, and set APIs are wrapped in **Structured Exception Handling (SEH)** guards. If an invalid or unallocated address is accessed, the game/process will not crash; instead, it raises a clean Lua runtime error.
+
+Every API function supports both **camelCase** (e.g. `readByte`) and **PascalCase** (e.g. `ReadByte`) globally.
+
 ```
 allocate(size)           -- allocate data memory
 allocateCode(size)       -- allocate executable memory
