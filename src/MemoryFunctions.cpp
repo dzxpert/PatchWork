@@ -3,6 +3,59 @@
 
 #include "CodeFunctions.h"
 
+template <typename T>
+static bool SafeRead(uintptr_t address, T& value) {
+	__try {
+		value = *(const T*)address;
+		return true;
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		return false;
+	}
+}
+
+template <typename T>
+static bool SafeWrite(uintptr_t address, T value) {
+	__try {
+		*(T*)address = value;
+		return true;
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		return false;
+	}
+}
+
+static bool SafeCopy(void* dst, const void* src, size_t size) {
+	__try {
+		memcpy(dst, src, size);
+		return true;
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		return false;
+	}
+}
+
+static bool SafeMemset(void* dst, int val, size_t size) {
+	__try {
+		memset(dst, val, size);
+		return true;
+	} __except (EXCEPTION_EXECUTE_HANDLER) {
+		return false;
+	}
+}
+
+static bool SafeReadStringNullTerminated(uintptr_t address, std::string& result, size_t maxLen = 65536) {
+	result.clear();
+	char c = 0;
+	for (size_t i = 0; i < maxLen; i++) {
+		if (!SafeRead(address + i, c)) {
+			return false;
+		}
+		if (c == '\0') {
+			return true;
+		}
+		result.push_back(c);
+	}
+	return true;
+}
+
 int luaReadByte(lua_State* L) {
 	if (lua_gettop(L) != 1) {
 		return luaL_error(L, "expected exactly 1 argument");
@@ -11,7 +64,11 @@ int luaReadByte(lua_State* L) {
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
-	lua_pushinteger(L, *((BYTE*)address));
+	BYTE value;
+	if (!SafeRead(address, value)) {
+		return luaL_error(L, "Access violation reading address 0x%p", (void*)address);
+	}
+	lua_pushinteger(L, value);
 	return 1;
 }
 
@@ -23,8 +80,11 @@ int luaReadSmallInteger(lua_State* L) {
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
-
-	lua_pushinteger(L, *((SHORT*)address));
+	SHORT value;
+	if (!SafeRead(address, value)) {
+		return luaL_error(L, "Access violation reading address 0x%p", (void*)address);
+	}
+	lua_pushinteger(L, value);
 	return 1;
 }
 
@@ -36,8 +96,11 @@ int luaReadInteger(lua_State* L) {
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
-
-	lua_pushinteger(L, *((int*)address));
+	int value;
+	if (!SafeRead(address, value)) {
+		return luaL_error(L, "Access violation reading address 0x%p", (void*)address);
+	}
+	lua_pushinteger(L, value);
 	return 1;
 }
 
@@ -67,11 +130,17 @@ int luaReadString(lua_State* L) {
 	}
 
 	if (length > 0) {
-		lua_pushlstring(L, (const char*)address, length);
+		std::string buffer(length, '\0');
+		if (!SafeCopy(&buffer[0], (const void*)address, length)) {
+			return luaL_error(L, "Access violation reading address 0x%p", (void*)address);
+		}
+		lua_pushlstring(L, buffer.data(), length);
 	}
 	else {
-		// Finds the first \0 byte and terminates
-		std::string result((const char*)address);
+		std::string result;
+		if (!SafeReadStringNullTerminated(address, result)) {
+			return luaL_error(L, "Access violation reading address 0x%p", (void*)address);
+		}
 		lua_pushstring(L, result.c_str());
 	}
 
@@ -93,13 +162,14 @@ int luaReadBytes(lua_State* L) {
 	lua_createtable(L, size, 0);
 
 	for (int i = 0; i < size; i++) {
-		unsigned char value = *((BYTE*)(address + i));
+		unsigned char value;
+		if (!SafeRead(address + i, value)) {
+			return luaL_error(L, "Access violation reading address 0x%p", (void*)(address + i));
+		}
 		lua_pushinteger(L, (lua_Integer)i + 1);
 		lua_pushinteger(L, value);
 		lua_settable(L, -3);  /* 3rd element from the stack top */
 	}
-
-	// we pass the table back;
 
 	return 1;
 }
@@ -122,7 +192,9 @@ int luaWriteString(lua_State* L) {
 	}
 #endif
 
-	memcpy((void*)address, value, size);
+	if (!SafeCopy((void*)address, value, size)) {
+		return luaL_error(L, "Access violation writing address 0x%p", (void*)address);
+	}
 
 	return 0;
 }
@@ -144,7 +216,9 @@ int luaWriteByte(lua_State* L) {
 	}
 #endif
 
-	* ((BYTE*)address) = value;
+	if (!SafeWrite<BYTE>(address, value)) {
+		return luaL_error(L, "Access violation writing address 0x%p", (void*)address);
+	}
 	return 0;
 }
 
@@ -165,7 +239,9 @@ int luaWriteSmallInteger(lua_State* L) {
 	}
 #endif
 
-	* ((SHORT*)address) = value;
+	if (!SafeWrite<SHORT>(address, value)) {
+		return luaL_error(L, "Access violation writing address 0x%p", (void*)address);
+	}
 	return 0;
 }
 
@@ -186,7 +262,9 @@ int luaWriteInteger(lua_State* L) {
 	}
 #endif
 
-	* ((int*)address) = value;
+	if (!SafeWrite<int>(address, value)) {
+		return luaL_error(L, "Access violation writing address 0x%p", (void*)address);
+	}
 	return 0;
 }
 
@@ -225,8 +303,9 @@ int luaWriteBytes(lua_State* L) {
 	int size = bytes.tellg();
 	bytes.seekg(0, bytes.beg);
 
-	// str() is null-terminated, but size is the size without the final null byte, which makes this correct
-	memcpy((void*)address, bytes.str().data(), size);
+	if (!SafeCopy((void*)address, bytes.str().data(), size)) {
+		return luaL_error(L, "Access violation writing address 0x%p", (void*)address);
+	}
 
 	return 0;
 }
@@ -258,7 +337,9 @@ int luaMemCpy(lua_State* L) {
 	}
 #endif
 
-	memcpy((void*)dst, (void*)src, size);
+	if (!SafeCopy((void*)dst, (void*)src, size)) {
+		return luaL_error(L, "Access violation copying %d bytes from 0x%p to 0x%p", size, (void*)src, (void*)dst);
+	}
 
 	return 0;
 }
@@ -292,7 +373,9 @@ int luaMemSet(lua_State* L) {
 	}
 #endif
 
-	memset((void*)dst, val, size);
+	if (!SafeMemset((void*)dst, val, size)) {
+		return luaL_error(L, "Access violation in memset at address 0x%p", (void*)dst);
+	}
 
 	return 0;
 }
@@ -360,7 +443,11 @@ int luaReadQword(lua_State* L) {
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
-	lua_pushinteger(L, (lua_Integer)*((unsigned long long*)address));
+	unsigned long long value;
+	if (!SafeRead(address, value)) {
+		return luaL_error(L, "Access violation reading address 0x%p", (void*)address);
+	}
+	lua_pushinteger(L, (lua_Integer)value);
 	return 1;
 }
 
@@ -373,7 +460,9 @@ int luaWriteQword(lua_State* L) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
 	unsigned long long value = lua_tointeger(L, 2);
-	*((unsigned long long*)address) = value;
+	if (!SafeWrite<unsigned long long>(address, value)) {
+		return luaL_error(L, "Access violation writing address 0x%p", (void*)address);
+	}
 	return 0;
 }
 
@@ -385,7 +474,11 @@ int luaReadFloat(lua_State* L) {
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
-	lua_pushnumber(L, (lua_Number)*((float*)address));
+	float value;
+	if (!SafeRead(address, value)) {
+		return luaL_error(L, "Access violation reading address 0x%p", (void*)address);
+	}
+	lua_pushnumber(L, (lua_Number)value);
 	return 1;
 }
 
@@ -398,7 +491,9 @@ int luaWriteFloat(lua_State* L) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
 	float value = (float)lua_tonumber(L, 2);
-	*((float*)address) = value;
+	if (!SafeWrite<float>(address, value)) {
+		return luaL_error(L, "Access violation writing address 0x%p", (void*)address);
+	}
 	return 0;
 }
 
@@ -410,7 +505,11 @@ int luaReadDouble(lua_State* L) {
 	if (address == 0) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
-	lua_pushnumber(L, (lua_Number)*((double*)address));
+	double value;
+	if (!SafeRead(address, value)) {
+		return luaL_error(L, "Access violation reading address 0x%p", (void*)address);
+	}
+	lua_pushnumber(L, (lua_Number)value);
 	return 1;
 }
 
@@ -423,7 +522,9 @@ int luaWriteDouble(lua_State* L) {
 		return luaL_error(L, "argument 1 must be a valid address");
 	}
 	double value = (double)lua_tonumber(L, 2);
-	*((double*)address) = value;
+	if (!SafeWrite<double>(address, value)) {
+		return luaL_error(L, "Access violation writing address 0x%p", (void*)address);
+	}
 	return 0;
 }
 

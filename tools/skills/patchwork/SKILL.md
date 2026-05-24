@@ -130,6 +130,17 @@ print("Instruction detoured successfully!")
 
 ## 4. Best Practices for AI Agents
 
+> [!CAUTION]
+> **CRITICAL: NEVER USE UNBASED OFFSETS**
+> Absolute addresses for local game module pointers change every time the game runs due to **ASLR (Address Space Layout Randomization)**. 
+> - **WRONG**: `readQword(0xA5C00F0)` — This will attempt to read absolute address `0xA5C00F0` which is in low unallocated memory, causing a Lua access violation error.
+> - **RIGHT**: 
+>   ```lua
+>   local base = getAddress("StarCitizen.exe")
+>   local pGame = readQword(base + 0xA5C00F0)
+>   ```
+> Always retrieve the module base address via `getAddress("StarCitizen.exe")` (or `get_base_address` if calling via MCP tools) first, and add your offset to it.
+
 1. **Avoid Pointer Truncation**: Ensure you treat address pointers as 64-bit integers (`uintptr_t`/`DWORD_PTR`). Avoid casting pointers to 32-bit `DWORD` or `int` variables.
 2. **State Validation**: Always check if pointers are `nil` or `0` before attempting to read/write them to avoid Access Violations.
 3. **Graceful Error Handling**: Wrap deep nested memory operations inside conditional branches or try-catch blocks to prevent game/process crashes.
