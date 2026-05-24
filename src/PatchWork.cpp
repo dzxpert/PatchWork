@@ -36,42 +36,83 @@ static const struct luaL_Reg printlib[] = {
 
 const struct luaL_Reg RPS_LIB[] = {
 	{"hookCode", luaHookCode},
+	{"HookCode", luaHookCode},
 	{"callOriginal", luaCallMachineCode},
+	{"CallOriginal", luaCallMachineCode},
 	{"exposeCode", luaExposeCode},
+	{"ExposeCode", luaExposeCode},
 	{"detourCode", luaDetourCode},
+	{"DetourCode", luaDetourCode},
 
 	{"allocate", luaAllocate},
+	{"Allocate", luaAllocate},
 	{"deallocate", luaDeallocate},
+	{"Deallocate", luaDeallocate},
 	{"allocateCode", luaAllocateRWE},
+	{"AllocateCode", luaAllocateRWE},
 	{"deallocateCode", luaDeallocateRWE},
+	{"DeallocateCode", luaDeallocateRWE},
 
 	{"loadLibraryA", luaLoadLibraryA},
+	{"LoadLibraryA", luaLoadLibraryA},
 	{"getLibraryProcAddressA", luaGetLibraryProcAddressA},
+	{"GetLibraryProcAddressA", luaGetLibraryProcAddressA},
 	{"getProcAddress", luaGetProcAddress},
+	{"GetProcAddress", luaGetProcAddress},
 	{"getAddress", luaGetAddress},
+	{"GetAddress", luaGetAddress},
 
 	{"readByte", luaReadByte},
+	{"ReadByte", luaReadByte},
 	{"readSmallInteger", luaReadSmallInteger},
+	{"ReadSmallInteger", luaReadSmallInteger},
 	{"readInteger", luaReadInteger},
+	{"ReadInteger", luaReadInteger},
 	{"readQword", luaReadQword},
+	{"ReadQword", luaReadQword},
+	{"readFloat", luaReadFloat},
+	{"ReadFloat", luaReadFloat},
+	{"readDouble", luaReadDouble},
+	{"ReadDouble", luaReadDouble},
 	{"readString", luaReadString},
+	{"ReadString", luaReadString},
 	{"readBytes", luaReadBytes},
+	{"ReadBytes", luaReadBytes},
 
 	{"writeByte", luaWriteByte},
+	{"WriteByte", luaWriteByte},
 	{"writeSmallInteger", luaWriteSmallInteger},
+	{"WriteSmallInteger", luaWriteSmallInteger},
 	{"writeInteger", luaWriteInteger},
+	{"WriteInteger", luaWriteInteger},
 	{"writeQword", luaWriteQword},
+	{"WriteQword", luaWriteQword},
+	{"writeFloat", luaWriteFloat},
+	{"WriteFloat", luaWriteFloat},
+	{"writeDouble", luaWriteDouble},
+	{"WriteDouble", luaWriteDouble},
 	{"writeString", luaWriteString},
+	{"WriteString", luaWriteString},
 	{"writeBytes", luaWriteBytes},
+	{"WriteBytes", luaWriteBytes},
 	
 	{"writeCode", luaWriteCode},
+	{"WriteCode", luaWriteCode},
 
 	{"copyMemory", luaMemCpy},
+	{"CopyMemory", luaMemCpy},
 	{"setMemory", luaMemSet},
+	{"SetMemory", luaMemSet},
 
 	{"registerString", registerString},
+	{"RegisterString", registerString},
 
 	{"scanForAOB", luaScanForAOB},
+	{"ScanForAOB", luaScanForAOB},
+	
+	{"isValidAddress", luaIsValidAddress},
+	{"IsValidAddress", luaIsValidAddress},
+
 	{NULL, NULL} /* end of array */
 };
 

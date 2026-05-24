@@ -32,29 +32,32 @@ class PatchWorkBridge:
             return True
         for offset in range(10):
             port = BASE_PORT + offset
+            s = None
             try:
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(1.5)
+                s.settimeout(3.0)
                 s.connect((HOST, port))
                 self.sock = s
                 self.port = port
-                # Read initial handshake from DLL server
-                reader = s.makefile("r")
-                reader.readline() 
                 return True
             except (ConnectionRefusedError, OSError):
+                if s:
+                    s.close()
                 continue
         return False
 
-    def send_dll_request(self, method, params=None):
-        """Send a JSON-RPC request to the PatchWork DLL and get the result."""
+    def send_dll_request(self, name, arguments=None):
+        """Send a JSON-RPC tools/call request to the PatchWork DLL and get the result."""
         if not self.connect_dll():
             return {"error": "Could not connect to PatchWork DLL. Ensure the game is running and PatchWork.dll is injected."}
         
         payload = {
             "jsonrpc": "2.0",
-            "method": method,
-            "params": params or {},
+            "method": "tools/call",
+            "params": {
+                "name": name,
+                "arguments": arguments or {}
+            },
             "id": 1
         }
         try:
@@ -93,6 +96,8 @@ class PatchWorkBridge:
             if "error" in resp:
                 return {"content": [{"type": "text", "text": f"Error: {resp['error']}"}], "isError": True}
             res = resp.get("result", {}).get("content", [{}])[0].get("text", "nil")
+            if res.isdigit():
+                res = f"0x{int(res):X}"
             return {"content": [{"type": "text", "text": f"Base Address: {res}"}]}
 
         # 3. read_memory
@@ -105,6 +110,7 @@ class PatchWorkBridge:
             lua_func = "readInteger"
             if mem_type == "byte": lua_func = "readByte"
             elif mem_type == "short": lua_func = "readSmallInteger"
+            elif mem_type == "qword": lua_func = "readQword"
             elif mem_type == "string": lua_func = f"function(a) return readString(a, {length if length > 0 else 'nil'}) end"
             
             lua_code = f"return ({lua_func})({addr})"
@@ -112,6 +118,8 @@ class PatchWorkBridge:
             if "error" in resp:
                 return {"content": [{"type": "text", "text": f"Error: {resp['error']}"}], "isError": True}
             res = resp.get("result", {}).get("content", [{}])[0].get("text", "nil")
+            if mem_type == "qword" and res.isdigit():
+                res = f"0x{int(res):X}"
             return {"content": [{"type": "text", "text": res}]}
 
         # 4. write_memory
@@ -123,6 +131,7 @@ class PatchWorkBridge:
             lua_func = "writeInteger"
             if mem_type == "byte": lua_func = "writeByte"
             elif mem_type == "short": lua_func = "writeSmallInteger"
+            elif mem_type == "qword": lua_func = "writeQword"
             elif mem_type == "string": lua_func = "writeString"
             
             # Escape strings if needed
@@ -144,6 +153,8 @@ class PatchWorkBridge:
             if "error" in resp:
                 return {"content": [{"type": "text", "text": f"Error: {resp['error']}"}], "isError": True}
             res = resp.get("result", {}).get("content", [{}])[0].get("text", "nil")
+            if res.isdigit():
+                res = f"0x{int(res):X}"
             return {"content": [{"type": "text", "text": f"Found at: {res}"}]}
 
         # 6. get_console
@@ -221,7 +232,7 @@ def main():
                                     "type": "object",
                                     "properties": {
                                         "address": {"type": "integer", "description": "The 64-bit target address pointer."},
-                                        "type": {"type": "string", "enum": ["byte", "short", "integer", "string"], "description": "Type of data to read."},
+                                        "type": {"type": "string", "enum": ["byte", "short", "integer", "qword", "string"], "description": "Type of data to read."},
                                         "length": {"type": "integer", "description": "Number of bytes to read (only applicable if type is string)."}
                                     },
                                     "required": ["address", "type"]
@@ -234,7 +245,7 @@ def main():
                                     "type": "object",
                                     "properties": {
                                         "address": {"type": "integer", "description": "The 64-bit target address pointer."},
-                                        "type": {"type": "string", "enum": ["byte", "short", "integer", "string"], "description": "Type of data to write."},
+                                        "type": {"type": "string", "enum": ["byte", "short", "integer", "qword", "string"], "description": "Type of data to write."},
                                         "value": {"type": ["integer", "string"], "description": "The value to write (integer or string)."}
                                     },
                                     "required": ["address", "type", "value"]

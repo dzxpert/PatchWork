@@ -36,8 +36,8 @@ The MCP bridge registers the following native tools:
 |---|---|---|
 | `execute_lua` | `code` (string) | Executes arbitrary Lua strings on the main thread and captures printed output. |
 | `get_base_address` | `module_name` (string, optional) | Gets the 64-bit base address of a loaded module or executable. |
-| `read_memory` | `address` (int), `type` (string), `length` (int, optional) | Reads a `byte`, `short`, `integer`, or `string` from memory. |
-| `write_memory` | `address` (int), `type` (string), `value` (int/string) | Writes a `byte`, `short`, `integer`, or `string` to memory. |
+| `read_memory` | `address` (int), `type` (string), `length` (int, optional) | Reads a `byte`, `short`, `integer`, `qword`, or `string` from memory. |
+| `write_memory` | `address` (int), `type` (string), `value` (int/string) | Writes a `byte`, `short`, `integer`, `qword`, or `string` to memory. |
 | `scan_aob` | `pattern` (string) | Scans for an Array of Bytes signature to find static offsets. |
 | `get_console` | `count` (int, optional) | Retrieves the latest lines printed to the in-game ImGui console. |
 
@@ -72,12 +72,12 @@ To safely read a deep pointer chain (e.g. `base + 0x2E68000 -> +0x80 -> +0x1A8`)
 
 ```lua
 local base = getAddress("StarCitizen.exe")
-local basePointer = readInteger(base + 0x2E68000)
+local basePointer = readQword(base + 0x2E68000) -- Read 64-bit pointer
 
 if basePointer and basePointer ~= 0 then
-    local level1 = readInteger(basePointer + 0x80)
+    local level1 = readQword(basePointer + 0x80) -- Read 64-bit pointer
     if level1 and level1 ~= 0 then
-        local value = readInteger(level1 + 0x1A8)
+        local value = readInteger(level1 + 0x1A8) -- Read final 32-bit integer value
         print("Resolved Value: " .. value)
     end
 end
@@ -134,3 +134,82 @@ print("Instruction detoured successfully!")
 2. **State Validation**: Always check if pointers are `nil` or `0` before attempting to read/write them to avoid Access Violations.
 3. **Graceful Error Handling**: Wrap deep nested memory operations inside conditional branches or try-catch blocks to prevent game/process crashes.
 4. **Use Output Capture**: Output results using Lua `print(...)` in your `execute_lua` scripts; the MCP server will capture and return them directly to you.
+
+---
+
+## 5. Lua API Syntax Reference
+
+> [!IMPORTANT]
+> **Case Insensitivity**: Every API function supports both **camelCase** (e.g. `readByte`) and **PascalCase** (e.g. `ReadByte`) globally. AI agents can use either style.
+
+### Memory Read/Write Functions
+* `readByte(address) -> integer` \| `ReadByte(address) -> integer`
+  Reads a single byte (8-bit) from the specified 64-bit address.
+* `writeByte(address, value)` \| `WriteByte(address, value)`
+  Writes a single byte (8-bit) to the specified 64-bit address.
+* `readSmallInteger(address) -> integer` \| `ReadSmallInteger(address) -> integer`
+  Reads a short (16-bit signed integer) from the specified 64-bit address.
+* `writeSmallInteger(address, value)` \| `WriteSmallInteger(address, value)`
+  Writes a short (16-bit signed integer) to the specified 64-bit address.
+* `readInteger(address) -> integer` \| `ReadInteger(address) -> integer`
+  Reads a standard 32-bit signed integer from the specified 64-bit address.
+* `writeInteger(address, value)` \| `WriteInteger(address, value)`
+  Writes a standard 32-bit signed integer to the specified 64-bit address.
+* `readQword(address) -> integer` \| `ReadQword(address) -> integer`
+  Reads a 64-bit pointer or QWORD value from the specified 64-bit address.
+* `writeQword(address, value)` \| `WriteQword(address, value)`
+  Writes a 64-bit pointer or QWORD value to the specified 64-bit address.
+* `readFloat(address) -> number` \| `ReadFloat(address) -> number`
+  Reads a 32-bit float value from the specified 64-bit address.
+* `writeFloat(address, value)` \| `WriteFloat(address, value)`
+  Writes a 32-bit float value to the specified 64-bit address.
+* `readDouble(address) -> number` \| `ReadDouble(address) -> number`
+  Reads a 64-bit double-precision float value from the specified 64-bit address.
+* `writeDouble(address, value)` \| `WriteDouble(address, value)`
+  Writes a 64-bit double-precision float value to the specified 64-bit address.
+* `readString(address, [maxLength]) -> string` \| `ReadString(address, [maxLength]) -> string`
+  Reads a null-terminated ASCII string from the specified 64-bit address.
+* `writeString(address, string)` \| `WriteString(address, string)`
+  Writes an ASCII string directly into memory at the specified 64-bit address.
+* `readBytes(address, count) -> table` \| `ReadBytes(address, count) -> table`
+  Reads `count` bytes from the address and returns them as a 1-indexed Lua array table of byte integers.
+* `writeBytes(address, table)` \| `WriteBytes(address, table)`
+  Writes an array table of byte integers sequentially starting at the specified 64-bit address.
+
+### Utility & Memory Operations
+* `isValidAddress(address) -> boolean` \| `IsValidAddress(address) -> boolean`
+  Returns `true` if the specified address resides within committed, readable memory. Prevents DLL access violation crashes.
+* `getAddress([moduleName]) -> integer` \| `GetAddress([moduleName]) -> integer`
+  Returns the 64-bit base address of the specified module. Omit or pass `nil` to get the base address of the main injected executable.
+* `allocate(size) -> integer` \| `Allocate(size) -> integer`
+  Allocates `size` bytes of data memory in the process space. Returns the 64-bit allocation pointer.
+* `deallocate(address)` \| `Deallocate(address)`
+  Frees previously allocated data memory.
+* `allocateCode(size) -> integer` \| `AllocateCode(size) -> integer`
+  Allocates `size` bytes of executable memory (Read-Write-Execute). Returns the 64-bit address.
+* `deallocateCode(address)` \| `DeallocateCode(address)`
+  Frees allocated executable memory.
+* `copyMemory(dst, src, count)` \| `CopyMemory(dst, src, count)`
+  Performs a native `memcpy` of `count` bytes from `src` address to `dst` address.
+* `setMemory(address, value, count)` \| `SetMemory(address, value, count)`
+  Performs a native `memset` of `count` bytes to `value` starting at `address`.
+* `scanForAOB(pattern, [min], [max]) -> integer` \| `ScanForAOB(pattern, [min], [max]) -> integer`
+  Scans for a hexadecimal AOB signature with `?` wildcards and returns its 64-bit address, or `nil`.
+
+### Detouring & Hooking
+* `hookCode(callback, address, argCount, callingConvention, hookSize) -> function` \| `HookCode(callback, address, argCount, callingConvention, hookSize) -> function`
+  Hooks a native function at `address` and redirects it to the Lua `callback` function. Returns the original native function callable from Lua.
+* `callOriginal(...)` \| `CallOriginal(...)`
+  Helper to invoke the original function from within a hooked callback.
+* `exposeCode(address, argCount, callingConvention) -> function` \| `ExposeCode(address, argCount, callingConvention) -> function`
+  Exposes a native function at `address` to be callable from Lua scripts.
+* `detourCode(callback, address, size)` \| `DetourCode(callback, address, size)`
+  Redirects execution flow at `address` to run a Lua `callback` in the middle of a function. Callback receives and returns a table of registers (`RAX`-`R15`).
+
+### Dynamic Loading
+* `loadLibraryA(name) -> integer` \| `LoadLibraryA(name) -> integer`
+  Invokes `LoadLibraryA` on the DLL module and returns its 64-bit handle.
+* `getLibraryProcAddressA(module, funcName) -> integer` \| `GetLibraryProcAddressA(module, funcName) -> integer`
+  Loads a DLL module and retrieves the 64-bit function pointer for the exported symbol `funcName`.
+* `getProcAddress(moduleHandle, funcName) -> integer` \| `GetProcAddress(moduleHandle, funcName) -> integer`
+  Retrieves a 64-bit function pointer from a loaded module handle.

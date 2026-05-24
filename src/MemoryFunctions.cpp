@@ -377,3 +377,74 @@ int luaWriteQword(lua_State* L) {
 	return 0;
 }
 
+int luaReadFloat(lua_State* L) {
+	if (lua_gettop(L) != 1) {
+		return luaL_error(L, "expected exactly 1 argument");
+	}
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+	lua_pushnumber(L, (lua_Number)*((float*)address));
+	return 1;
+}
+
+int luaWriteFloat(lua_State* L) {
+	if (lua_gettop(L) != 2) {
+		return luaL_error(L, "expected exactly 2 arguments");
+	}
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+	float value = (float)lua_tonumber(L, 2);
+	*((float*)address) = value;
+	return 0;
+}
+
+int luaReadDouble(lua_State* L) {
+	if (lua_gettop(L) != 1) {
+		return luaL_error(L, "expected exactly 1 argument");
+	}
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+	lua_pushnumber(L, (lua_Number)*((double*)address));
+	return 1;
+}
+
+int luaWriteDouble(lua_State* L) {
+	if (lua_gettop(L) != 2) {
+		return luaL_error(L, "expected exactly 2 arguments");
+	}
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
+	if (address == 0) {
+		return luaL_error(L, "argument 1 must be a valid address");
+	}
+	double value = (double)lua_tonumber(L, 2);
+	*((double*)address) = value;
+	return 0;
+}
+
+int luaIsValidAddress(lua_State* L) {
+	if (lua_gettop(L) != 1) {
+		return luaL_error(L, "expected exactly 1 argument");
+	}
+	uintptr_t address = (uintptr_t)lua_tointeger(L, 1);
+	if (address == 0) {
+		lua_pushboolean(L, false);
+		return 1;
+	}
+	MEMORY_BASIC_INFORMATION mbi = { 0 };
+	if (VirtualQuery((LPCVOID)address, &mbi, sizeof(mbi)) != 0) {
+		bool readable = (mbi.State == MEM_COMMIT) && 
+		                ((mbi.Protect & PAGE_NOACCESS) == 0) &&
+		                ((mbi.Protect & PAGE_GUARD) == 0);
+		lua_pushboolean(L, readable);
+	} else {
+		lua_pushboolean(L, false);
+	}
+	return 1;
+}
+

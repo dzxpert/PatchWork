@@ -39,3 +39,10 @@ int luaDeallocate(lua_State* L);
 
 int luaReadQword(lua_State* L);
 int luaWriteQword(lua_State* L);
+
+int luaReadFloat(lua_State* L);
+int luaWriteFloat(lua_State* L);
+int luaReadDouble(lua_State* L);
+int luaWriteDouble(lua_State* L);
+
+int luaIsValidAddress(lua_State* L);
